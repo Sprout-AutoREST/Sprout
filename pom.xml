@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>de.flix29</groupId>
+	<artifactId>sprout</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+	<name>Sprout AutoREST</name>
+	<description>Compile-time REST scaffolding for Spring Boot</description>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <id>flix29</id>
+            <name>Felix Hallerbach</name>
+            <email>info@flix29.de</email>
+        </developer>
+    </developers>
+    <scm>
+        <connection>scm:git:https://github.com/Flix-29/NotionApiClient.git</connection>
+        <developerConnection>scm:git:git@github.com:flix-29/NotionApiClient.git</developerConnection>
+        <url>https://github.com/Flix-29/NotionApiClient</url>
+    </scm>
+
+    <url/>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>21</maven.compiler.release>
+        <spotless.maven.plugin.version>2.43.0</spotless.maven.plugin.version>
+        <google.java.format.version>1.17.0</google.java.format.version>
+        <spring.boot.version>3.5.4</spring.boot.version>
+        <javapoet.version>1.13.0</javapoet.version>
+        <autoservice.version>1.1.1</autoservice.version>
+        <jakarta.persistence.version>3.1.0</jakarta.persistence.version>
+    </properties>
+
+    <modules>
+        <module>sprout-annotations</module>
+        <module>sprout-processor</module>
+        <module>sprout-runtime</module>
+    </modules>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.11.0</version>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.maven.plugin.version}</version>
+                <configuration>
+                    <java>
+                        <googleJavaFormat>
+                            <version>${google.java.format.version}</version>
+                        </googleJavaFormat>
+                        <removeUnusedImports/>
+                        <importOrder/>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>apply</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
