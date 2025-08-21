@@ -1,0 +1,48 @@
+name: Maven CI/CD
+
+on: [ push, pull_request ]
+
+jobs:
+  build_and_test:
+    name: Build, Lint and Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Build project with Maven
+        run: mvn -B -U clean verify
+
+      - name: Upload JaCoCo aggregate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-aggregate
+          path: target/site/jacoco-aggregate/
+          if-no-files-found: ignore
+
+      - name: Upload Checkstyle reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkstyle-reports
+          path: "**/target/site/checkstyle*.{html,xml}"
+          if-no-files-found: ignore
+
+      - name: Upload SpotBugs reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotbugs-reports
+          path: "**/target/spotbugs*.{html,xml}"
+          if-no-files-found: ignore
