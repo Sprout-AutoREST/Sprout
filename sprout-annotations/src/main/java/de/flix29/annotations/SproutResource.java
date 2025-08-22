@@ -9,8 +9,8 @@ import java.lang.annotation.Target;
 /**
  * Annotation to define a Sprout resource.
  * <p>
- * This annotation is used to mark an Entity as a resource in the Sprout framework.
- * These resources are used to generate API endpoints.
+ * This annotation is used to mark an Entity as a resource in the Sprout
+ * framework. These resources are used to generate API endpoints.
  * </p>
  */
 @Documented
@@ -21,10 +21,12 @@ public @interface SproutResource {
      * Optional path (e.g. "products"). Default is derived as "api/[name]/".
      */
     String path() default "";
+
     /**
      * If true, only read endpoints are generated for this resource.
      */
     boolean readOnly() default false;
+
     /**
      * Optional description for the resource.
      */
