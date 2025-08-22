@@ -6,6 +6,13 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Annotation to define a Sprout resource.
+ * <p>
+ * This annotation is used to mark an Entity as a resource in the Sprout framework.
+ * These resources are used to generate API endpoints.
+ * </p>
+ */
 @Documented
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
