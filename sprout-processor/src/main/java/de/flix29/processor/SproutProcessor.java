@@ -1,6 +1,7 @@
 package de.flix29.processor;
 
 import com.google.auto.service.AutoService;
+import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
@@ -58,17 +59,18 @@ public class SproutProcessor extends AbstractProcessor {
 
             String simpleName = annotation.name().isBlank() ? type.getSimpleName().toString() : annotation.name();
             String derivedPath = "/api/" + simpleName.toLowerCase() + "s";
-            String path = (annotation.path() != null && !annotation.path().isBlank()) ? annotation.path() : derivedPath;
+            String apiPath =
+                    (annotation.path() != null && !annotation.path().isBlank()) ? annotation.path() : derivedPath;
 
             processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
-                    "[Sprout] Generating marker for " + simpleName + " at path " + path);
+                    "[Sprout] Generating marker for " + simpleName + " at apiPath " + apiPath);
 
             String basePackage = baseGeneratedPackage(type);
             String className = simpleName + "SproutMarker";
 
             FieldSpec pathField = FieldSpec
                     .builder(String.class, "PATH", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                    .initializer("$S", path).build();
+                    .initializer("$S", apiPath).build();
 
             TypeMirror idType;
             try {
@@ -77,6 +79,8 @@ public class SproutProcessor extends AbstractProcessor {
                 continue;
             }
             var repository = SproutRepositoryGenerator.generateRepository(type, simpleName, idType);
+            var controller = SproutControllerProcessor
+                    .generateController(type, simpleName, basePackage, annotation.readOnly(), apiPath, idType);
 
             var typeName = TypeName.get(idType);
             processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
@@ -91,8 +95,9 @@ public class SproutProcessor extends AbstractProcessor {
                     .addField(idField);
 
             JavaFile markerFile = createJavaFile(basePackage, marker);
-            JavaFile repoFile = createJavaFile(basePackage + ".repositories", repository);
-            writeFiles(markerFile, repoFile);
+            JavaFile repositoryFile = createJavaFile(basePackage + ".repositories", repository);
+            JavaFile controllerFile = createJavaFile(basePackage + ".controller", controller);
+            writeFiles(markerFile, repositoryFile, controllerFile);
         }
         return false;
     }
@@ -198,12 +203,13 @@ public class SproutProcessor extends AbstractProcessor {
         addGeneratedAnnotation(type);
         return JavaFile.builder(pkg, type.build())
                 .skipJavaLangImports(true)
+                .indent("    ")
                 .build();
     }
 
     private void addGeneratedAnnotation(TypeSpec.Builder typeBuilder) {
         typeBuilder.addAnnotation(
-                com.squareup.javapoet.AnnotationSpec.builder(ClassName.get("javax.annotation.processing", "Generated"))
+                AnnotationSpec.builder(ClassName.get("javax.annotation.processing", "Generated"))
                         .addMember("value", "$S", "SproutProcessor")
                         .build()
         );
