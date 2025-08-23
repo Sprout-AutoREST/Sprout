@@ -18,6 +18,11 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 public @interface SproutResource {
     /**
+     * Optional name for the resource and generated Classes. Default is the class name.
+     */
+    String name() default "";
+
+    /**
      * Optional path (e.g. "products"). Default is derived as "api/[name]/".
      */
     String path() default "";
