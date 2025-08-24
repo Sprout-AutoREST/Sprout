@@ -4,6 +4,7 @@ import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
@@ -15,8 +16,11 @@ import javax.lang.model.type.TypeMirror;
 public class SproutControllerProcessor {
 
     private static final String SPRING_WEB_ANNOTATION_PACKAGE = "org.springframework.web.bind.annotation";
+    private static final ClassName PATH_VARIABLE_CLASS = ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "PathVariable");
     private static final ClassName RESPONSE_ENTITY_CLASS = ClassName.get("org.springframework.http", "ResponseEntity");
     private static final ClassName LIST_CLASS = ClassName.get("java.util", "List");
+    private static final String APPLICATION_JSON = "application/json";
+    private static final String ID = "/{id}";
 
     private SproutControllerProcessor() {
         // Utility class
@@ -26,33 +30,41 @@ public class SproutControllerProcessor {
             TypeElement type, String simpleName, String basePackage, boolean readOnly, String apiPath, TypeMirror idType
     ) {
         final String componentName = "Sprout" + simpleName;
-        return TypeSpec.classBuilder(componentName + "Controller")
+        var typeSpec = TypeSpec.classBuilder(componentName + "Controller")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "RestController"))
                 .addAnnotation(AnnotationSpec
                         .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "RequestMapping"))
                         .addMember("path", "$S", apiPath)
-                        .addMember("produces", "$S", "application/json")
+                        .addMember("produces", "$S", APPLICATION_JSON)
                         .build()
                 )
                 .addField(FieldSpec.builder(
-                                ClassName.get(basePackage, componentName + "Service"), "service",
+                                ClassName.get(basePackage + ".services", componentName + "Service"), "service",
                                 Modifier.PRIVATE, Modifier.FINAL
                         ).build()
                 )
                 .addMethod(MethodSpec.constructorBuilder()
                         .addModifiers(Modifier.PUBLIC)
-                        .addParameter(ClassName.get(basePackage, componentName + "Service"), "service")
+                        .addParameter(ClassName.get(basePackage + ".services", componentName + "Service"), "service")
                         .addStatement("this.service = service")
                         .build()
                 )
                 .addMethod(generateGetAllMethod(type, simpleName))
-                .addMethod(generateGetByIdMethod(type, simpleName, idType))
-                ;
+                .addMethod(generateGetByIdMethod(type, simpleName, idType));
+
+        if (!readOnly) {
+            typeSpec
+                    .addMethod(generatePostMethod(type, simpleName))
+                    .addMethod(generatePutMethod(type, simpleName, idType))
+                    .addMethod(generateDeleteMethod(simpleName, idType));
+        }
+
+        return typeSpec;
     }
 
     private static MethodSpec generateGetAllMethod(TypeElement type, String simpleName) {
-        return MethodSpec.methodBuilder("listAll")
+        return MethodSpec.methodBuilder("getAll")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
                         .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "GetMapping"))
@@ -75,20 +87,107 @@ public class SproutControllerProcessor {
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
                         .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "GetMapping"))
-                        .addMember("path", "$S", "/{id}")
+                        .addMember("path", "$S", ID)
                         .build()
                 )
-                .addParameter(TypeName.get(idType), "id")
+                .addParameter(ParameterSpec.builder(TypeName.get(idType), "id")
+                        .addAnnotation(PATH_VARIABLE_CLASS)
+                        .build()
+                )
                 .returns(ParameterizedTypeName.get(
                         RESPONSE_ENTITY_CLASS,
                         ClassName.get(type)
                 ))
                 .addJavadoc("Returns a single $L item by its ID.\n", simpleName)
                 .addStatement("""
-                        return service.findById(id)
-                                .map($T::ok)
-                                .orElse($T.notFound().build())
-                        """,
+                                return service.findById(id)
+                                        .map($T::ok)
+                                        .orElse($T.notFound().build())
+                                """,
+                        RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
+                )
+                .build();
+    }
+
+    private static MethodSpec generatePostMethod(TypeElement type, String simpleName) {
+        return MethodSpec.methodBuilder("create")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(AnnotationSpec
+                        .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "PostMapping"))
+                        .build()
+                )
+                .addParameter(ParameterSpec.builder(ClassName.get(type), "new" + simpleName)
+                        .addAnnotation(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "RequestBody"))
+                        .addAnnotation(ClassName.get("jakarta.validation", "Valid"))
+                        .build()
+                )
+                .returns(ParameterizedTypeName.get(
+                        RESPONSE_ENTITY_CLASS,
+                        ClassName.get(type)
+                ))
+                .addJavadoc("Creates a new $L item.\n", simpleName)
+                .addStatement("return $T.status($T.CREATED).body(service.save(new$L))",
+                        RESPONSE_ENTITY_CLASS, ClassName.get("org.springframework.http", "HttpStatus"), simpleName
+                )
+                .build();
+    }
+
+    private static MethodSpec generatePutMethod(TypeElement type, String simpleName, TypeMirror idType) {
+        return MethodSpec.methodBuilder("update")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(AnnotationSpec
+                        .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "PutMapping"))
+                        .addMember("path", "$S", ID)
+                        .addMember("consumes", "$S", APPLICATION_JSON)
+                        .build()
+                )
+                .addParameter(ParameterSpec.builder(TypeName.get(idType), "id")
+                        .addAnnotation(AnnotationSpec
+                                .builder(PATH_VARIABLE_CLASS)
+                                .addMember("value", "$S", "id").build()
+                        ).build()
+                )
+                .addParameter(ParameterSpec.builder(ClassName.get(type), "updated" + simpleName)
+                        .addAnnotation(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "RequestBody"))
+                        .addAnnotation(ClassName.get("jakarta.validation", "Valid"))
+                        .build()
+                )
+                .returns(ParameterizedTypeName.get(
+                        RESPONSE_ENTITY_CLASS,
+                        ClassName.get(type)
+                ))
+                .addJavadoc("Updates an existing $L item by its ID.\n", simpleName)
+                .addStatement("""
+                                return service.update(id, updated$L)
+                                    .map($T::ok)
+                                    .orElse($T.notFound().build())
+                                """,
+                        simpleName, RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
+                )
+                .build();
+    }
+
+    private static MethodSpec generateDeleteMethod(String simpleName, TypeMirror idType) {
+        return MethodSpec.methodBuilder("deleteById")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(AnnotationSpec
+                        .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "DeleteMapping"))
+                        .addMember("path", "$S", ID)
+                        .addMember("consumes", "$S", APPLICATION_JSON)
+                        .build()
+                )
+                .addParameter(ParameterSpec.builder(TypeName.get(idType), "id")
+                        .addAnnotation(AnnotationSpec
+                                .builder(PATH_VARIABLE_CLASS)
+                                .addMember("value", "$S", "id").build()
+                        ).build()
+                )
+                .returns(ParameterizedTypeName.get(
+                        RESPONSE_ENTITY_CLASS,
+                        TypeName.VOID.box()
+                ))
+                .addJavadoc("Deletes an existing $L item by its ID.\n", simpleName)
+                .addStatement("return service.deleteById(id) ? $T.noContent().build() : $T.notFound().build()",
                         RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
                 )
                 .build();
