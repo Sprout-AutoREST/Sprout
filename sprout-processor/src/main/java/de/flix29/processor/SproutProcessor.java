@@ -77,6 +77,7 @@ public class SproutProcessor extends AbstractProcessor {
                 continue;
             }
             var repository = SproutRepositoryGenerator.generateRepository(type, simpleName, idType);
+            var service = SproutServiceGenerator.generateService(type, simpleName, idType);
 
             var typeName = TypeName.get(idType);
             processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
@@ -92,7 +93,8 @@ public class SproutProcessor extends AbstractProcessor {
 
             JavaFile markerFile = createJavaFile(basePackage, marker);
             JavaFile repoFile = createJavaFile(basePackage + ".repositories", repository);
-            writeFiles(markerFile, repoFile);
+            JavaFile serviceFile = createJavaFile(basePackage + ".services", service);
+            writeFiles(markerFile, repoFile, serviceFile);
         }
         return false;
     }
