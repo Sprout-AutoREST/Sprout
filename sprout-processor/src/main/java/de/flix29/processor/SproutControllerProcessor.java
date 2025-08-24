@@ -14,6 +14,8 @@ import javax.lang.model.type.TypeMirror;
 public class SproutControllerProcessor {
 
     private static final String SPRING_WEB_ANNOTATION_PACKAGE = "org.springframework.web.bind.annotation";
+    private static final ClassName RESPONSE_ENTITY_CLASS = ClassName.get("org.springframework.http", "ResponseEntity");
+    private static final ClassName LIST_CLASS = ClassName.get("java.util", "List");
 
     private SproutControllerProcessor() {
         // Utility class
@@ -22,26 +24,33 @@ public class SproutControllerProcessor {
     protected static TypeSpec.Builder generateController(
             TypeElement type, String simpleName, String basePackage, boolean readOnly, String apiPath, TypeMirror idType
     ) {
-        return TypeSpec.classBuilder("Sprout" + simpleName + "Controller")
-                .addModifiers(javax.lang.model.element.Modifier.PUBLIC)
+        final String componentName = "Sprout" + simpleName;
+        return TypeSpec.classBuilder(componentName + "Controller")
+                .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "RestController"))
                 .addAnnotation(AnnotationSpec
                         .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "RequestMapping"))
                         .addMember("path", "$S", apiPath)
+                        .addMember("produces", "$S", "application/json")
                         .build()
                 )
-                .addAnnotation(ClassName.get("lombok", "RequiredArgsConstructor"))
                 .addField(FieldSpec.builder(
-                                ClassName.get(basePackage, "Sprout" + simpleName + "Service"), "service",
+                                ClassName.get(basePackage, componentName + "Service"), "service",
                                 Modifier.PRIVATE, Modifier.FINAL
                         ).build()
+                )
+                .addMethod(MethodSpec.constructorBuilder()
+                        .addModifiers(Modifier.PUBLIC)
+                        .addParameter(ClassName.get(basePackage, componentName + "Service"), "service")
+                        .addStatement("this.service = service")
+                        .build()
                 )
                 .addMethod(generateGetAllMethod(type, simpleName))
                 ;
     }
 
     private static MethodSpec generateGetAllMethod(TypeElement type, String simpleName) {
-        return MethodSpec.methodBuilder("getAll" + simpleName + "s")
+        return MethodSpec.methodBuilder("listAll")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
                         .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "GetMapping"))
@@ -50,12 +59,12 @@ public class SproutControllerProcessor {
                 .returns(ParameterizedTypeName.get(
                         ClassName.get("org.springframework.http", "ResponseEntity"),
                         ParameterizedTypeName.get(
-                                ClassName.get("java.util", "List"),
+                                LIST_CLASS,
                                 ClassName.get(type)
                         )
                 ))
-                .addStatement("var response = service.getAll()")
-                .addStatement("return ResponseEntity.ok(response)")
+                .addJavadoc("Returns all $L items.\n", simpleName)
+                .addStatement("return $T.ok(service.findAll())", RESPONSE_ENTITY_CLASS)
                 .build();
     }
 }
