@@ -79,6 +79,7 @@ public class SproutProcessor extends AbstractProcessor {
                 continue;
             }
             var repository = SproutRepositoryGenerator.generateRepository(type, simpleName, idType);
+            var service = SproutServiceGenerator.generateService(type, simpleName, basePackage, idType);
             var controller = SproutControllerProcessor
                     .generateController(type, simpleName, basePackage, annotation.readOnly(), apiPath, idType);
 
@@ -96,8 +97,9 @@ public class SproutProcessor extends AbstractProcessor {
 
             JavaFile markerFile = createJavaFile(basePackage, marker);
             JavaFile repositoryFile = createJavaFile(basePackage + ".repositories", repository);
+            JavaFile serviceFile = createJavaFile(basePackage + ".services", service);
             JavaFile controllerFile = createJavaFile(basePackage + ".controller", controller);
-            writeFiles(markerFile, repositoryFile, controllerFile);
+            writeFiles(markerFile, repositoryFile, serviceFile, controllerFile);
         }
         return false;
     }
