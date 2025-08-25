@@ -30,6 +30,7 @@ public class SproutControllerProcessor {
             TypeElement type, String simpleName, String basePackage, boolean readOnly, String apiPath, TypeMirror idType
     ) {
         final String componentName = "Sprout" + simpleName;
+        ClassName service = ClassName.get(basePackage + ".services", componentName + "Service");
         var typeSpec = TypeSpec.classBuilder(componentName + "Controller")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "RestController"))
@@ -40,13 +41,13 @@ public class SproutControllerProcessor {
                         .build()
                 )
                 .addField(FieldSpec.builder(
-                                ClassName.get(basePackage + ".services", componentName + "Service"), "service",
+                                service, "service",
                                 Modifier.PRIVATE, Modifier.FINAL
                         ).build()
                 )
                 .addMethod(MethodSpec.constructorBuilder()
                         .addModifiers(Modifier.PUBLIC)
-                        .addParameter(ClassName.get(basePackage + ".services", componentName + "Service"), "service")
+                        .addParameter(service, "service")
                         .addStatement("this.service = service")
                         .build()
                 )
