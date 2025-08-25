@@ -25,14 +25,14 @@ public class SproutServiceGenerator {
     }
 
     protected static TypeSpec.Builder generateService(
-            TypeElement type, String simpleName, String basePath, TypeMirror idType
+            TypeElement type, String simpleName, String basePath, boolean readOnly, TypeMirror idType
     ) {
         final String componentName = "Sprout" + simpleName;
         final ClassName repository = ClassName.get(basePath + ".repositories", componentName + "Repository");
         final ClassName entityType = ClassName.get(type);
         final TypeName idT = TypeName.get(idType);
 
-        return TypeSpec.classBuilder(componentName + "Service")
+        var builder = TypeSpec.classBuilder(componentName + "Service")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(SERVICE)
                 .addField(FieldSpec.builder(
@@ -45,11 +45,14 @@ public class SproutServiceGenerator {
                         .build()
                 )
                 .addMethod(generateFindAllMethod(entityType))
-                .addMethod(generateFindByIdMethod(entityType, idT))
-
-                .addMethod(generateSaveMethod(entityType))
-                .addMethod(generateUpdateMethod(entityType, idT))
-                .addMethod(generateDeleteMethod(idT));
+                .addMethod(generateFindByIdMethod(entityType, idT));
+        if (!readOnly) {
+            builder
+                    .addMethod(generateSaveMethod(entityType))
+                    .addMethod(generateUpdateMethod(entityType, idT))
+                    .addMethod(generateDeleteMethod(idT));
+        }
+        return builder;
     }
 
     private static MethodSpec generateFindAllMethod(ClassName entityType) {

@@ -79,7 +79,8 @@ public class SproutProcessor extends AbstractProcessor {
                 continue;
             }
             var repository = SproutRepositoryGenerator.generateRepository(type, simpleName, idType);
-            var service = SproutServiceGenerator.generateService(type, simpleName, basePackage, idType);
+            var service = SproutServiceGenerator
+                    .generateService(type, simpleName, basePackage, annotation.readOnly(), idType);
             var controller = SproutControllerProcessor
                     .generateController(type, simpleName, basePackage, annotation.readOnly(), apiPath, idType);
 
