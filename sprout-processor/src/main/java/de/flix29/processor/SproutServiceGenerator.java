@@ -1,5 +1,6 @@
 package de.flix29.processor;
 
+import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.MethodSpec;
@@ -46,11 +47,18 @@ public class SproutServiceGenerator {
                 )
                 .addMethod(generateFindAllMethod(entityType))
                 .addMethod(generateFindByIdMethod(entityType, idT));
+
         if (!readOnly) {
             builder
                     .addMethod(generateSaveMethod(entityType))
                     .addMethod(generateUpdateMethod(entityType, idT))
                     .addMethod(generateDeleteMethod(idT));
+        }
+        if (readOnly) {
+            builder.addAnnotation(AnnotationSpec.builder(TRANSACTIONAL)
+                    .addMember("readOnly", "$L", true)
+                    .build()
+            );
         }
         return builder;
     }

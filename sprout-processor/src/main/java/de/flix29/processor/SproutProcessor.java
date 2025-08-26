@@ -14,6 +14,8 @@ import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -25,7 +27,9 @@ import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,10 +40,15 @@ public class SproutProcessor extends AbstractProcessor {
     private static final String SPROUT_ID = "de.flix29.annotations.SproutId";
     private static final String JAKARTA_ID = "jakarta.persistence.Id";
     private static final String JAVAX_ID = "javax.persistence.Id";
+
     private static final String JAKARTA_EMBEDDED_ID = "jakarta.persistence.EmbeddedId";
     private static final String JAVAX_EMBEDDED_ID = "javax.persistence.EmbeddedId";
 
     private static final List<String> ID_ORDER = List.of(SPROUT_ID, JAKARTA_ID, JAVAX_ID);
+
+    private static final String JAKARTA_ENTITY = "jakarta.persistence.Entity";
+    private static final String JAVAX_ENTITY = "javax.persistence.Entity";
+
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
@@ -58,6 +67,10 @@ public class SproutProcessor extends AbstractProcessor {
             SproutResource annotation = type.getAnnotation(SproutResource.class);
 
             String simpleName = annotation.name().isBlank() ? type.getSimpleName().toString() : annotation.name();
+            String entityName = resolveJpaEntityName(type);
+            if (entityName == null || entityName.isBlank()) {
+                entityName = simpleName;
+            }
             String derivedPath = "/api/" + simpleName.toLowerCase() + "s";
             String apiPath =
                     (annotation.path() != null && !annotation.path().isBlank()) ? annotation.path() : derivedPath;
@@ -68,17 +81,15 @@ public class SproutProcessor extends AbstractProcessor {
             String basePackage = baseGeneratedPackage(type);
             String className = simpleName + "SproutMarker";
 
-            FieldSpec pathField = FieldSpec
-                    .builder(String.class, "PATH", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                    .initializer("$S", apiPath).build();
-
-            TypeMirror idType;
+            Element idElement;
             try {
-                idType = findIdType(type);
+                idElement = findIdElement(type);
             } catch (IllegalStateException ex) {
                 continue;
             }
-            var repository = SproutRepositoryGenerator.generateRepository(type, simpleName, idType);
+            var idType = getIdTypeFromElement(idElement);
+            var idName = getIdNameFromElement(idElement);
+            var repository = SproutRepositoryGenerator.generateRepository(type, simpleName, entityName, idName, idType);
             var service = SproutServiceGenerator
                     .generateService(type, simpleName, basePackage, annotation.readOnly(), idType);
             var controller = SproutControllerProcessor
@@ -88,21 +99,36 @@ public class SproutProcessor extends AbstractProcessor {
             processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
                     "[Sprout] ID for " + type.getSimpleName() + " -> " + idType);
 
-            var idField = FieldSpec.builder(typeName, "ID_TYPE", Modifier.PUBLIC, Modifier.STATIC)
-                    .build();
-
             var marker = TypeSpec.classBuilder(className)
                     .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                    .addField(pathField)
-                    .addField(idField);
+                    .addField(FieldSpec
+                            .builder(String.class, "PATH", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                            .initializer("$S", apiPath)
+                            .build()
+                    )
+                    .addField(FieldSpec
+                            .builder(Class.class, "ID_CLASS", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                            .initializer("$T.class", typeName)
+                            .build()
+                    )
+                    .addField(FieldSpec
+                            .builder(String.class, "ENTITY_NAME", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                            .initializer("$S", entityName)
+                            .build()
+                    )
+                    .addField(FieldSpec
+                            .builder(String.class, "ID_PROPERTY", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                            .initializer("$S", idName)
+                            .build()
+                    );
 
             JavaFile markerFile = createJavaFile(basePackage, marker);
             JavaFile repositoryFile = createJavaFile(basePackage + ".repositories", repository);
             JavaFile serviceFile = createJavaFile(basePackage + ".services", service);
-            JavaFile controllerFile = createJavaFile(basePackage + ".controller", controller);
+            JavaFile controllerFile = createJavaFile(basePackage + ".controllers", controller);
             writeFiles(markerFile, repositoryFile, serviceFile, controllerFile);
         }
-        return false;
+        return true;
     }
 
     private String baseGeneratedPackage(TypeElement type) {
@@ -110,7 +136,7 @@ public class SproutProcessor extends AbstractProcessor {
         return entityPkg + ".generated";
     }
 
-    private TypeMirror findIdType(TypeElement type) throws IllegalArgumentException {
+    private Element findIdElement(TypeElement type) throws IllegalStateException {
         if (hasEmbeddedId(type)) {
             processingEnv.getMessager().printMessage(
                     Diagnostic.Kind.ERROR,
@@ -133,10 +159,7 @@ public class SproutProcessor extends AbstractProcessor {
                 );
                 throw new IllegalStateException("Multiple ID fields or methods found in " + type.getQualifiedName());
             } else if (idElements.size() == 1) {
-                var idElement = idElements.getFirst();
-                var typeMirror = idElement.getKind() == ElementKind.METHOD ?
-                        ((ExecutableElement) idElement).getReturnType() : idElement.asType();
-                return canonicalBoxedErasure(typeMirror);
+                return idElements.getFirst();
             }
         }
         processingEnv.getMessager().printMessage(
@@ -148,6 +171,29 @@ public class SproutProcessor extends AbstractProcessor {
                 "Please annotate one field or method with @SproutId, @jakarta.persistence.Id, or @javax.persistence.Id."
         );
     }
+
+    private TypeMirror getIdTypeFromElement(Element idElement) {
+        var typeMirror = idElement.getKind() == ElementKind.METHOD ?
+                ((ExecutableElement) idElement).getReturnType() : idElement.asType();
+        return canonicalBoxedErasure(typeMirror);
+    }
+
+    private String getIdNameFromElement(Element element) {
+        String name = element.getSimpleName().toString();
+        return switch (element.getKind()) {
+            case FIELD -> name;
+            case METHOD -> {
+                if (name.startsWith("get") && name.length() > 3) {
+                    name = name.substring(3);
+                } else if (name.startsWith("is") && name.length() > 2) {
+                    name = name.substring(2);
+                }
+                yield Character.toLowerCase(name.charAt(0)) + name.substring(1);
+            }
+            default -> name;
+        };
+    }
+
 
     private boolean hasEmbeddedId(TypeElement type) {
         return !getAllAnnotatedBy(type, JAKARTA_EMBEDDED_ID).isEmpty() ||
@@ -171,6 +217,36 @@ public class SproutProcessor extends AbstractProcessor {
                         )
                 )
                 .toList();
+    }
+
+    private String resolveJpaEntityName(TypeElement type) {
+        var annotationMirror = findAnnotation(type, JAKARTA_ENTITY);
+        if (annotationMirror == null) {
+            annotationMirror = findAnnotation(type, JAVAX_ENTITY);
+        }
+        if (annotationMirror == null) {
+            return type.getSimpleName().toString();
+        }
+        return getAnnotationStringValue(annotationMirror, "name")
+                .filter(s -> !s.isBlank())
+                .orElse(type.getSimpleName().toString());
+    }
+
+    private AnnotationMirror findAnnotation(Element element, String annotationName) {
+        return element.getAnnotationMirrors().stream()
+                .filter(annotationMirror -> annotationMirror.getAnnotationType().toString().equals(annotationName))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Optional<String> getAnnotationStringValue(AnnotationMirror annotationMirror, String attributeName) {
+        return annotationMirror.getElementValues().entrySet().stream()
+                .filter(entry -> entry.getKey().getSimpleName().contentEquals(attributeName))
+                .map(Map.Entry::getValue)
+                .map(AnnotationValue::getValue)
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .findFirst();
     }
 
     private boolean isNonStaticFieldOrMethod(Element element) {
