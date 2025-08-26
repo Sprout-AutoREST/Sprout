@@ -174,7 +174,6 @@ public class SproutControllerProcessor {
                 .addAnnotation(AnnotationSpec
                         .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "DeleteMapping"))
                         .addMember("path", "$S", ID)
-                        .addMember("consumes", "$S", APPLICATION_JSON)
                         .build()
                 )
                 .addParameter(ParameterSpec.builder(TypeName.get(idType), "id")
