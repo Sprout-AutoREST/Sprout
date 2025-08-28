@@ -3,9 +3,7 @@ package de.flix29.processor;
 import com.google.auto.service.AutoService;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
-import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import de.flix29.annotations.SproutResource;
 
@@ -89,40 +87,19 @@ public class SproutProcessor extends AbstractProcessor {
             }
             var idType = getIdTypeFromElement(idElement);
             var idName = getIdNameFromElement(idElement);
+
+            var marker = SproutMarkerProcessor
+                    .generateMarker(type.asType(), className, apiPath, entityName, idName);
             var repository = SproutRepositoryGenerator.generateRepository(type, simpleName, entityName, idName, idType);
             var service = SproutServiceGenerator
                     .generateService(type, simpleName, basePackage, annotation.readOnly(), idType);
             var controller = SproutControllerProcessor
                     .generateController(type, simpleName, basePackage, annotation.readOnly(), apiPath, idType);
 
-            var typeName = TypeName.get(idType);
             processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
                     "[Sprout] ID for " + type.getSimpleName() + " -> " + idType);
 
-            var marker = TypeSpec.classBuilder(className)
-                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                    .addField(FieldSpec
-                            .builder(String.class, "PATH", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                            .initializer("$S", apiPath)
-                            .build()
-                    )
-                    .addField(FieldSpec
-                            .builder(Class.class, "ID_CLASS", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                            .initializer("$T.class", typeName)
-                            .build()
-                    )
-                    .addField(FieldSpec
-                            .builder(String.class, "ENTITY_NAME", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                            .initializer("$S", entityName)
-                            .build()
-                    )
-                    .addField(FieldSpec
-                            .builder(String.class, "ID_PROPERTY", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                            .initializer("$S", idName)
-                            .build()
-                    );
-
-            JavaFile markerFile = createJavaFile(basePackage, marker);
+            JavaFile markerFile = createJavaFile(basePackage + ".marker", marker);
             JavaFile repositoryFile = createJavaFile(basePackage + ".repositories", repository);
             JavaFile serviceFile = createJavaFile(basePackage + ".services", service);
             JavaFile controllerFile = createJavaFile(basePackage + ".controllers", controller);
