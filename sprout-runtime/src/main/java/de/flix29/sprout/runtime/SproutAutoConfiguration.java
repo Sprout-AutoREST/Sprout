@@ -1,4 +1,4 @@
-package de.flix29.runtime;
+package de.flix29.sprout.runtime;
 
 import org.springframework.context.annotation.Configuration;
 

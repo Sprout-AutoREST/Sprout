@@ -1,4 +1,4 @@
-package de.flix29.annotations;
+package de.flix29.sprout.annotations;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

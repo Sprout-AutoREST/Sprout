@@ -1,11 +1,11 @@
-package de.flix29.processor;
+package de.flix29.sprout.processor;
 
 import com.google.auto.service.AutoService;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.TypeSpec;
-import de.flix29.annotations.SproutResource;
+import de.flix29.sprout.annotations.SproutResource;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Processor;

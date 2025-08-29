@@ -1,4 +1,4 @@
-package de.flix29.processor;
+package de.flix29.sprout.processor;
 
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.TypeName;
