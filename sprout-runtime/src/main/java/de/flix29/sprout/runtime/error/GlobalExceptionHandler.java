@@ -115,13 +115,27 @@ public class GlobalExceptionHandler {
                 httpServletRequest.getRequestURI(), status.value(), status.getReasonPhrase(), code, message, fieldErrors
         );
         if (logAsError || status.is5xxServerError()) {
-            log.error("{} {} -> {} {} (code={})", httpServletRequest.getMethod(), httpServletRequest.getRequestURI(),
-                    status.value(), status.getReasonPhrase(), code, exception);
+            if (props.isLogStacktraces()) {
+                log.error("{} {} -> {} {} (code={})", httpServletRequest.getMethod(),
+                        httpServletRequest.getRequestURI(), status.value(),
+                        status.getReasonPhrase(), code, exception);
+            } else {
+                log.error("{} {} -> {} {} (code={}) : {}", httpServletRequest.getMethod(),
+                        httpServletRequest.getRequestURI(), status.value(),
+                        status.getReasonPhrase(), code, exception.getMessage());
+            }
         } else {
-            log.warn("{} {} -> {} {} (code={}) : {}", httpServletRequest.getMethod(),
-                    httpServletRequest.getRequestURI(), status.value(),
-                    status.getReasonPhrase(), code, exception.getMessage()
-            );
+            if (props.isLogStacktraces()) {
+                log.warn("{} {} -> {} {} (code={})", httpServletRequest.getMethod(),
+                        httpServletRequest.getRequestURI(), status.value(),
+                        status.getReasonPhrase(), code, exception
+                );
+            } else {
+                log.warn("{} {} -> {} {} (code={}) : {}", httpServletRequest.getMethod(),
+                        httpServletRequest.getRequestURI(), status.value(),
+                        status.getReasonPhrase(), code, exception.getMessage()
+                );
+            }
         }
         return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON).body(body);
     }
