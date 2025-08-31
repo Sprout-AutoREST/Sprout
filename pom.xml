@@ -40,7 +40,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven-compiler.release>21</maven-compiler.release>
+        <maven.compiler.release>21</maven.compiler.release>
         <spotless-maven-plugin.version>2.43.0</spotless-maven-plugin.version>
         <spring-boot.version>3.5.4</spring-boot.version>
         <javapoet.version>1.13.0</javapoet.version>
