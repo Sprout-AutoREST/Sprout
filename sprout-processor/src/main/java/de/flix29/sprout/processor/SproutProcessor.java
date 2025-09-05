@@ -5,6 +5,7 @@ import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.TypeSpec;
+import de.flix29.sprout.annotations.SproutPolicy;
 import de.flix29.sprout.annotations.SproutResource;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -35,7 +36,7 @@ import java.util.stream.Collectors;
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
 public class SproutProcessor extends AbstractProcessor {
 
-    private static final String SPROUT_ID = "de.flix29.annotations.SproutId";
+    private static final String SPROUT_ID = "de.flix29.sprout.annotations.SproutId";
     private static final String JAKARTA_ID = "jakarta.persistence.Id";
     private static final String JAVAX_ID = "javax.persistence.Id";
 
@@ -46,6 +47,8 @@ public class SproutProcessor extends AbstractProcessor {
 
     private static final String JAKARTA_ENTITY = "jakarta.persistence.Entity";
     private static final String JAVAX_ENTITY = "javax.persistence.Entity";
+
+    private static final String PRE_AUTHORIZE = "org.springframework.security.access.prepost.PreAuthorize";
 
 
     @Override
@@ -63,6 +66,7 @@ public class SproutProcessor extends AbstractProcessor {
 
         for (TypeElement type : classes) {
             SproutResource annotation = type.getAnnotation(SproutResource.class);
+            SproutPolicy policyAnnotation = type.getAnnotation(SproutPolicy.class);
 
             String simpleName = annotation.name().isBlank() ? type.getSimpleName().toString() : annotation.name();
             String entityName = resolveJpaEntityName(type);
@@ -88,13 +92,26 @@ public class SproutProcessor extends AbstractProcessor {
             var idType = getIdTypeFromElement(idElement);
             var idName = getIdNameFromElement(idElement);
 
-            var marker = SproutMarkerProcessor
-                    .generateMarker(type.asType(), className, apiPath, entityName, idName);
+            var marker = SproutMarkerProcessor.generateMarker(
+                    type.asType(),
+                    className,
+                    apiPath,
+                    policyAnnotation,
+                    entityName,
+                    idName
+            );
             var repository = SproutRepositoryGenerator.generateRepository(type, simpleName, entityName, idName, idType);
             var service = SproutServiceGenerator
                     .generateService(type, simpleName, basePackage, annotation.readOnly(), idType);
-            var controller = SproutControllerProcessor
-                    .generateController(type, simpleName, basePackage, annotation.readOnly(), apiPath, idType);
+            var controller = SproutControllerProcessor.generateController(
+                    type,
+                    simpleName,
+                    basePackage,
+                    annotation.readOnly(),
+                    hasClass(PRE_AUTHORIZE) ? policyAnnotation : null,
+                    apiPath,
+                    idType
+            );
 
             processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
                     "[Sprout] ID for " + type.getSimpleName() + " -> " + idType);
@@ -170,7 +187,6 @@ public class SproutProcessor extends AbstractProcessor {
             default -> name;
         };
     }
-
 
     private boolean hasEmbeddedId(TypeElement type) {
         return !getAllAnnotatedBy(type, JAKARTA_EMBEDDED_ID).isEmpty() ||
@@ -281,5 +297,9 @@ public class SproutProcessor extends AbstractProcessor {
                     Diagnostic.Kind.ERROR, "[Sprout] Failed to write generated sources: " + ex.getMessage()
             );
         }
+    }
+
+    private boolean hasClass(String typeName) {
+        return processingEnv.getElementUtils().getTypeElement(typeName) != null;
     }
 }

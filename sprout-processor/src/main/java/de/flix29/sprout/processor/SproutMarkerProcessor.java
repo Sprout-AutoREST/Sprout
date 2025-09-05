@@ -3,6 +3,7 @@ package de.flix29.sprout.processor;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import de.flix29.sprout.annotations.SproutPolicy;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.type.TypeMirror;
@@ -14,9 +15,14 @@ public class SproutMarkerProcessor {
     }
 
     protected static TypeSpec.Builder generateMarker(
-            TypeMirror typeMirror, String className, String apiPath, String entityName, String idName
+            TypeMirror typeMirror,
+            String className,
+            String apiPath,
+            SproutPolicy policy,
+            String entityName,
+            String idName
     ) {
-        return TypeSpec.classBuilder(className)
+        var builder = TypeSpec.classBuilder(className)
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addField(FieldSpec
                         .builder(String.class, "PATH", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
@@ -38,5 +44,27 @@ public class SproutMarkerProcessor {
                         .initializer("$S", idName)
                         .build()
                 );
+
+        if (policy != null) {
+            builder.addField(FieldSpec
+                    .builder(String.class, "READ_POLICY", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                    .initializer("$S", policy.read())
+                    .build()
+            ).addField(FieldSpec
+                    .builder(String.class, "WRITE_POLICY", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                    .initializer("$S", policy.write())
+                    .build()
+            ).addField(FieldSpec
+                    .builder(String.class, "UPDATE_POLICY", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                    .initializer("$S", policy.update())
+                    .build()
+            ).addField(FieldSpec
+                    .builder(String.class, "DELETE_POLICY", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                    .initializer("$S", policy.delete())
+                    .build()
+            );
+        }
+
+        return builder;
     }
 }
