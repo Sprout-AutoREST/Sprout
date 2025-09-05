@@ -8,6 +8,7 @@ import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import de.flix29.sprout.annotations.SproutPolicy;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -27,7 +28,13 @@ public class SproutControllerProcessor {
     }
 
     protected static TypeSpec.Builder generateController(
-            TypeElement type, String simpleName, String basePackage, boolean readOnly, String apiPath, TypeMirror idType
+            TypeElement type,
+            String simpleName,
+            String basePackage,
+            boolean readOnly,
+            SproutPolicy policy,
+            String apiPath,
+            TypeMirror idType
     ) {
         final String componentName = "Sprout" + simpleName;
         ClassName service = ClassName.get(basePackage + ".services", componentName + "Service");
@@ -51,21 +58,21 @@ public class SproutControllerProcessor {
                         .addStatement("this.service = service")
                         .build()
                 )
-                .addMethod(generateGetAllMethod(type, simpleName))
-                .addMethod(generateGetByIdMethod(type, simpleName, idType));
+                .addMethod(generateGetAllMethod(type, simpleName, policy == null ? null : policy.read()))
+                .addMethod(generateGetByIdMethod(type, simpleName, idType, policy == null ? null : policy.read()));
 
         if (!readOnly) {
             typeSpec
-                    .addMethod(generatePostMethod(type, simpleName))
-                    .addMethod(generatePutMethod(type, simpleName, idType))
-                    .addMethod(generateDeleteMethod(simpleName, idType));
+                    .addMethod(generatePostMethod(type, simpleName, policy == null ? null : policy.write()))
+                    .addMethod(generatePutMethod(type, simpleName, idType, policy == null ? null : policy.update()))
+                    .addMethod(generateDeleteMethod(simpleName, idType, policy == null ? null : policy.delete()));
         }
 
         return typeSpec;
     }
 
-    private static MethodSpec generateGetAllMethod(TypeElement type, String simpleName) {
-        return MethodSpec.methodBuilder("getAll")
+    private static MethodSpec generateGetAllMethod(TypeElement type, String simpleName, String policy) {
+        var methodSpec = MethodSpec.methodBuilder("getAll")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
                         .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "GetMapping"))
@@ -79,12 +86,19 @@ public class SproutControllerProcessor {
                         )
                 ))
                 .addJavadoc("Returns all $L items.\n", simpleName)
-                .addStatement("return $T.ok(service.findAll())", RESPONSE_ENTITY_CLASS)
-                .build();
+                .addStatement("return $T.ok(service.findAll())", RESPONSE_ENTITY_CLASS);
+
+        if (policy != null && !policy.isBlank()) {
+            methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
+        }
+
+        return methodSpec.build();
     }
 
-    private static MethodSpec generateGetByIdMethod(TypeElement type, String simpleName, TypeMirror idType) {
-        return MethodSpec.methodBuilder("getById")
+    private static MethodSpec generateGetByIdMethod(
+            TypeElement type, String simpleName, TypeMirror idType, String policy
+    ) {
+        var methodSpec = MethodSpec.methodBuilder("getById")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
                         .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "GetMapping"))
@@ -106,12 +120,17 @@ public class SproutControllerProcessor {
                                         .orElse($T.notFound().build())
                                 """,
                         RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
-                )
-                .build();
+                );
+
+        if (policy != null && !policy.isBlank()) {
+            methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
+        }
+
+        return methodSpec.build();
     }
 
-    private static MethodSpec generatePostMethod(TypeElement type, String simpleName) {
-        return MethodSpec.methodBuilder("create")
+    private static MethodSpec generatePostMethod(TypeElement type, String simpleName, String policy) {
+        var methodSpec = MethodSpec.methodBuilder("create")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
                         .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "PostMapping"))
@@ -129,12 +148,17 @@ public class SproutControllerProcessor {
                 .addJavadoc("Creates a new $L item.\n", simpleName)
                 .addStatement("return $T.status($T.CREATED).body(service.save(new$L))",
                         RESPONSE_ENTITY_CLASS, ClassName.get("org.springframework.http", "HttpStatus"), simpleName
-                )
-                .build();
+                );
+
+        if (policy != null && !policy.isBlank()) {
+            methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
+        }
+
+        return methodSpec.build();
     }
 
-    private static MethodSpec generatePutMethod(TypeElement type, String simpleName, TypeMirror idType) {
-        return MethodSpec.methodBuilder("update")
+    private static MethodSpec generatePutMethod(TypeElement type, String simpleName, TypeMirror idType, String policy) {
+        var methodSpec = MethodSpec.methodBuilder("update")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
                         .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "PutMapping"))
@@ -164,12 +188,17 @@ public class SproutControllerProcessor {
                                     .orElse($T.notFound().build())
                                 """,
                         simpleName, RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
-                )
-                .build();
+                );
+
+        if (policy != null && !policy.isBlank()) {
+            methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
+        }
+
+        return methodSpec.build();
     }
 
-    private static MethodSpec generateDeleteMethod(String simpleName, TypeMirror idType) {
-        return MethodSpec.methodBuilder("deleteById")
+    private static MethodSpec generateDeleteMethod(String simpleName, TypeMirror idType, String policy) {
+        var methodSpec = MethodSpec.methodBuilder("deleteById")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
                         .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "DeleteMapping"))
@@ -189,7 +218,19 @@ public class SproutControllerProcessor {
                 .addJavadoc("Deletes an existing $L item by its ID.\n", simpleName)
                 .addStatement("return service.deleteById(id) ? $T.noContent().build() : $T.notFound().build()",
                         RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
-                )
+                );
+
+        if (policy != null && !policy.isBlank()) {
+            methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
+        }
+
+        return methodSpec.build();
+    }
+
+    private static AnnotationSpec generatePreAuthorizeAnnotation(String policy) {
+        return AnnotationSpec
+                .builder(ClassName.get("org.springframework.security.access.prepost", "PreAuthorize"))
+                .addMember("value", "$S", policy)
                 .build();
     }
 }
