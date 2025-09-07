@@ -76,6 +76,8 @@ public class SproutProcessor extends AbstractProcessor {
             String apiPath =
                     (annotation.path() != null && !annotation.path().isBlank()) ? annotation.path() : derivedPath;
 
+            boolean policyNeeded = checkIfPolicyNeeded(policyAnnotation);
+
             processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
                     "[Sprout] Generating marker for " + simpleName + " at apiPath " + apiPath);
 
@@ -107,7 +109,7 @@ public class SproutProcessor extends AbstractProcessor {
                     simpleName,
                     basePackage,
                     annotation.readOnly(),
-                    hasClass(PRE_AUTHORIZE) ? policyAnnotation : null,
+                    policyNeeded ? policyAnnotation : null,
                     apiPath,
                     idType
             );
@@ -239,6 +241,16 @@ public class SproutProcessor extends AbstractProcessor {
                 .filter(String.class::isInstance)
                 .map(String.class::cast)
                 .findFirst();
+    }
+
+    private boolean checkIfPolicyNeeded(SproutPolicy policyAnnotation) {
+        if (policyAnnotation != null && !hasClass(PRE_AUTHORIZE)) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                    "[Sprout] @SproutPolicy found but Spring Security is not on the classpath. Please add " +
+                            "spring-security-core and spring-security-config to your dependencies.");
+            return false;
+        }
+        return true;
     }
 
     private boolean isNonStaticFieldOrMethod(Element element) {
