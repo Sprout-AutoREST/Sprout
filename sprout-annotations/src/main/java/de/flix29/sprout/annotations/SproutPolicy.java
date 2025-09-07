@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 
 /**
  * Annotation to specify access control policies for CRUD operations on a resource.
- * Each operation (read, write, update, delete) can have its own policy string.
+ * Each operation (read, create, update, delete) can have its own policy string.
  * If no policy is needed for an operation, the corresponding string can be left empty.
  */
 @Documented
@@ -21,9 +21,9 @@ public @interface SproutPolicy {
     String read() default "";
 
     /**
-     * The policy string for the write operation. Can be empty if no policy is needed.
+     * The policy string for the create operation. Can be empty if no policy is needed.
      */
-    String write() default "";
+    String create() default "";
 
     /**
      * The policy string for the update operation. Can be empty if no policy is needed.

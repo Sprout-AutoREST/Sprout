@@ -50,7 +50,6 @@ public class SproutProcessor extends AbstractProcessor {
 
     private static final String PRE_AUTHORIZE = "org.springframework.security.access.prepost.PreAuthorize";
 
-
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         return Set.of(SproutResource.class.getCanonicalName());
