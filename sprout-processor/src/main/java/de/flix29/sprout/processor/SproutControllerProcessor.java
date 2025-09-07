@@ -22,6 +22,7 @@ public class SproutControllerProcessor {
     private static final ClassName LIST_CLASS = ClassName.get("java.util", "List");
     private static final String APPLICATION_JSON = "application/json";
     private static final String ID = "/{id}";
+    private static final String VALUE = "value";
 
     private SproutControllerProcessor() {
         // Utility class
@@ -63,7 +64,7 @@ public class SproutControllerProcessor {
 
         if (!readOnly) {
             typeSpec
-                    .addMethod(generatePostMethod(type, simpleName, policy == null ? null : policy.write()))
+                    .addMethod(generatePostMethod(type, simpleName, policy == null ? null : policy.create()))
                     .addMethod(generatePutMethod(type, simpleName, idType, policy == null ? null : policy.update()))
                     .addMethod(generateDeleteMethod(simpleName, idType, policy == null ? null : policy.delete()));
         }
@@ -134,6 +135,7 @@ public class SproutControllerProcessor {
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
                         .builder(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "PostMapping"))
+                        .addMember("consumes", "$S", APPLICATION_JSON)
                         .build()
                 )
                 .addParameter(ParameterSpec.builder(ClassName.get(type), "new" + simpleName)
@@ -169,7 +171,7 @@ public class SproutControllerProcessor {
                 .addParameter(ParameterSpec.builder(TypeName.get(idType), "id")
                         .addAnnotation(AnnotationSpec
                                 .builder(PATH_VARIABLE_CLASS)
-                                .addMember("value", "$S", "id").build()
+                                .addMember(VALUE, "$S", "id").build()
                         ).build()
                 )
                 .addParameter(ParameterSpec.builder(ClassName.get(type), "updated" + simpleName)
@@ -208,7 +210,7 @@ public class SproutControllerProcessor {
                 .addParameter(ParameterSpec.builder(TypeName.get(idType), "id")
                         .addAnnotation(AnnotationSpec
                                 .builder(PATH_VARIABLE_CLASS)
-                                .addMember("value", "$S", "id").build()
+                                .addMember(VALUE, "$S", "id").build()
                         ).build()
                 )
                 .returns(ParameterizedTypeName.get(
@@ -230,7 +232,7 @@ public class SproutControllerProcessor {
     private static AnnotationSpec generatePreAuthorizeAnnotation(String policy) {
         return AnnotationSpec
                 .builder(ClassName.get("org.springframework.security.access.prepost", "PreAuthorize"))
-                .addMember("value", "$S", policy)
+                .addMember(VALUE, "$S", policy)
                 .build();
     }
 }

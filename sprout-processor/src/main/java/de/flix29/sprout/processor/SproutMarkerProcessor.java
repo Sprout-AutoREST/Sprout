@@ -51,8 +51,8 @@ public class SproutMarkerProcessor {
                     .initializer("$S", policy.read())
                     .build()
             ).addField(FieldSpec
-                    .builder(String.class, "WRITE_POLICY", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                    .initializer("$S", policy.write())
+                    .builder(String.class, "CREATE_POLICY", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                    .initializer("$S", policy.create())
                     .build()
             ).addField(FieldSpec
                     .builder(String.class, "UPDATE_POLICY", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
