@@ -17,7 +17,7 @@ public class SproutMethodSecurityConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(SproutMethodSecurityConfiguration.class);
 
-    private SproutMethodSecurityConfiguration() {
+    SproutMethodSecurityConfiguration() {
         log.info("[Sprout] Method Security enabled via sprout.security.method-security.enabled=true");
     }
 }
