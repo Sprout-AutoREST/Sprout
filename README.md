@@ -4,6 +4,7 @@ Sprout is a powerful tool that automatically generates SpringBoot RESTful APIs f
 It simplifies the process of creating REST endpoints by leveraging your existing JPA entities, allowing you to focus on
 building your application rather than boilerplate code.
 
+<br>
 <p align="center">
     <img src="icon.svg">
 </p>
