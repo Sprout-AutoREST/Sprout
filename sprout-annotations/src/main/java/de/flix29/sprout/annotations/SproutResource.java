@@ -23,7 +23,7 @@ public @interface SproutResource {
     String name() default "";
 
     /**
-     * Optional path (e.g. "products"). Default is derived as "api/[name]/".
+     * Optional path (e.g. "/products"). Default is derived as "api/[name]/".
      */
     String path() default "";
 

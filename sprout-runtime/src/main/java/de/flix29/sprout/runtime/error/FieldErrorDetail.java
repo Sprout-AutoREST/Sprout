@@ -14,8 +14,8 @@ public record FieldErrorDetail(String field, String code, String message, Object
     }
 
     public static FieldErrorDetail from(ConstraintViolation<?> constraintViolation) {
-        String field =
-                constraintViolation.getPropertyPath() != null ? constraintViolation.getPropertyPath().toString() : null;
+        String field = constraintViolation.getPropertyPath() != null ?
+                constraintViolation.getPropertyPath().toString() : null;
         String code = (constraintViolation.getConstraintDescriptor() != null &&
                 constraintViolation.getConstraintDescriptor().getAnnotation() != null)
                 ? constraintViolation.getConstraintDescriptor().getAnnotation().annotationType().getSimpleName() : null;

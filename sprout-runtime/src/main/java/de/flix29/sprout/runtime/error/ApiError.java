@@ -13,7 +13,12 @@ public record ApiError(
         List<FieldErrorDetail> errors
 ) {
     public static ApiError of(
-            String path, int status, String error, String code, String message, List<FieldErrorDetail> errors
+            String path,
+            int status,
+            String error,
+            String code,
+            String message,
+            List<FieldErrorDetail> errors
     ) {
         return new ApiError(OffsetDateTime.now(), path, status, error, code, message, errors);
     }

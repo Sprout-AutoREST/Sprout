@@ -21,7 +21,7 @@ public class SproutErrorProperties {
      * Internal error code to be used for server errors (HTTP 500).
      * This is used as a default fallback code for internal errors.
      */
-    private String internalCode = "internal_error";
+    private String internalErrorCode = "internal_error";
 
     public boolean isEnabled() {
         return enabled;
@@ -39,11 +39,11 @@ public class SproutErrorProperties {
         this.logStacktraces = logStacktraces;
     }
 
-    public String getInternalCode() {
-        return internalCode;
+    public String getInternalErrorCode() {
+        return internalErrorCode;
     }
 
-    public void setInternalCode(String internalCode) {
-        this.internalCode = internalCode;
+    public void setInternalErrorCode(String internalErrorCode) {
+        this.internalErrorCode = internalErrorCode;
     }
 }
