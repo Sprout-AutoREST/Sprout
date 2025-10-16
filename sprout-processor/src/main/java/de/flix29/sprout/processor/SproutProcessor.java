@@ -78,9 +78,6 @@ public class SproutProcessor extends AbstractProcessor {
 
             boolean policyNeeded = checkIfPolicyNeeded(policyAnnotation);
 
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
-                    "[Sprout] Generating marker for " + simpleName + " at apiPath " + apiPath);
-
             String basePackage = baseGeneratedPackage(type);
             String className = simpleName + "SproutMarker";
 
@@ -93,6 +90,14 @@ public class SproutProcessor extends AbstractProcessor {
             var idType = getIdTypeFromElement(idElement);
             var idName = getIdNameFromElement(idElement);
 
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
+                    String .format("[Sprout] ID for %s -> '%s' with type %s", type.getSimpleName(), idName, idType)
+            );
+
+            processingEnv.getMessager().printMessage(
+                    Diagnostic.Kind.NOTE,
+                    "[Sprout] Generating marker for " + simpleName + " at apiPath " + apiPath
+            );
             var marker = SproutMarkerProcessor.generateMarker(
                     type.asType(),
                     className,
@@ -101,9 +106,26 @@ public class SproutProcessor extends AbstractProcessor {
                     entityName,
                     idName
             );
+
+            processingEnv.getMessager().printMessage(
+                    Diagnostic.Kind.NOTE,
+                    "[Sprout] Generating repository for " + simpleName
+            );
             var repository = SproutRepositoryGenerator.generateRepository(type, simpleName, entityName, idName, idType);
+
+            processingEnv.getMessager().printMessage(
+                    Diagnostic.Kind.NOTE,
+                    String.format("[Sprout] Generating%s service for %s ",
+                            annotation.readOnly() ? " readonly" : "", simpleName
+                    )
+            );
             var service = SproutServiceGenerator
                     .generateService(type, simpleName, basePackage, annotation.readOnly(), idType);
+
+            processingEnv.getMessager().printMessage(
+                    Diagnostic.Kind.NOTE,
+                    "[Sprout] Generating controller for " + simpleName
+            );
             var controller = SproutControllerProcessor.generateController(
                     type,
                     simpleName,
@@ -113,9 +135,6 @@ public class SproutProcessor extends AbstractProcessor {
                     apiPath,
                     idType
             );
-
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
-                    "[Sprout] ID for " + type.getSimpleName() + " -> " + idType);
 
             JavaFile markerFile = createJavaFile(basePackage + ".marker", marker);
             JavaFile repositoryFile = createJavaFile(basePackage + ".repositories", repository);
@@ -247,7 +266,8 @@ public class SproutProcessor extends AbstractProcessor {
         if (policyAnnotation != null && !hasClass(PRE_AUTHORIZE)) {
             processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
                     "[Sprout] @SproutPolicy found but Spring Security is not on the classpath. Please add " +
-                            "spring-security-core and spring-security-config to your dependencies.");
+                            "spring-security-core and spring-security-config to your dependencies."
+            );
             return false;
         }
         return true;
