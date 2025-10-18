@@ -99,7 +99,7 @@ public class SproutProcessor extends AbstractProcessor {
                     "[Sprout] Generating marker for " + simpleName + " at apiPath " + apiPath
             );
             var marker = SproutMarkerProcessor.generateMarker(
-                    type.asType(),
+                    idType,
                     className,
                     apiPath,
                     policyAnnotation,

@@ -15,7 +15,7 @@ public class SproutMarkerProcessor {
     }
 
     protected static TypeSpec.Builder generateMarker(
-            TypeMirror typeMirror,
+            TypeMirror idType,
             String className,
             String apiPath,
             SproutPolicy policy,
@@ -31,7 +31,7 @@ public class SproutMarkerProcessor {
                 )
                 .addField(FieldSpec
                         .builder(Class.class, "ID_CLASS", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                        .initializer("$T.class", TypeName.get(typeMirror))
+                        .initializer("$T.class", TypeName.get(idType))
                         .build()
                 )
                 .addField(FieldSpec
