@@ -20,6 +20,7 @@ public class SproutControllerProcessor {
     private static final ClassName PATH_VARIABLE_CLASS = ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "PathVariable");
     private static final ClassName RESPONSE_ENTITY_CLASS = ClassName.get("org.springframework.http", "ResponseEntity");
     private static final ClassName LIST_CLASS = ClassName.get("java.util", "List");
+    private static final ClassName OPTIONAL_CLASS = ClassName.get("java.util", "Optional");
     private static final String APPLICATION_JSON = "application/json";
     private static final String ID = "/{id}";
     private static final String VALUE = "value";
@@ -39,6 +40,10 @@ public class SproutControllerProcessor {
     ) {
         final String componentName = "Sprout" + simpleName;
         ClassName service = ClassName.get(basePackage + ".services", componentName + "Service");
+        ClassName overrideClass = ClassName.get(
+                basePackage + ".controllers", componentName + "ControllerOverride"
+        );
+
         var typeSpec = TypeSpec.classBuilder(componentName + "Controller")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "RestController"))
@@ -53,10 +58,17 @@ public class SproutControllerProcessor {
                                 Modifier.PRIVATE, Modifier.FINAL
                         ).build()
                 )
+                .addField(FieldSpec.builder(
+                                ParameterizedTypeName.get(OPTIONAL_CLASS, overrideClass), "override",
+                                Modifier.PRIVATE, Modifier.FINAL
+                        ).build()
+                )
                 .addMethod(MethodSpec.constructorBuilder()
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(service, "service")
+                        .addParameter(ParameterizedTypeName.get(OPTIONAL_CLASS, overrideClass), "override")
                         .addStatement("this.service = service")
+                        .addStatement("this.override = override == null ? $T.empty() : override", OPTIONAL_CLASS)
                         .build()
                 )
                 .addMethod(generateGetAllMethod(type, simpleName, policy == null ? null : policy.read()))
@@ -70,6 +82,80 @@ public class SproutControllerProcessor {
         }
 
         return typeSpec;
+    }
+
+    protected static TypeSpec.Builder generateControllerOverride(
+            TypeElement type,
+            String simpleName,
+            String basePackage,
+            TypeMirror idType
+    ) {
+        final String componentName = "Sprout" + simpleName;
+        ClassName service = ClassName.get(basePackage + ".services", componentName + "Service");
+        ClassName entityType = ClassName.get(type);
+
+        var builder = TypeSpec.interfaceBuilder(componentName + "ControllerOverride")
+                .addModifiers(Modifier.PUBLIC)
+                .addMethod(MethodSpec.methodBuilder("getAll")
+                        .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                        .addParameter(service, "service")
+                        .returns(ParameterizedTypeName.get(
+                                OPTIONAL_CLASS,
+                                ParameterizedTypeName.get(
+                                        RESPONSE_ENTITY_CLASS,
+                                        ParameterizedTypeName.get(LIST_CLASS, entityType)
+                                )
+                        ))
+                        .addStatement("return $T.empty()", OPTIONAL_CLASS)
+                        .build()
+                )
+                .addMethod(MethodSpec.methodBuilder("getById")
+                        .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                        .addParameter(TypeName.get(idType), "id")
+                        .addParameter(service, "service")
+                        .returns(ParameterizedTypeName.get(
+                                OPTIONAL_CLASS,
+                                ParameterizedTypeName.get(RESPONSE_ENTITY_CLASS, entityType.box())
+                        ))
+                        .addStatement("return $T.empty()", OPTIONAL_CLASS)
+                        .build()
+                )
+                .addMethod(MethodSpec.methodBuilder("create")
+                        .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                        .addParameter(entityType, "new" + simpleName)
+                        .addParameter(service, "service")
+                        .returns(ParameterizedTypeName.get(
+                                OPTIONAL_CLASS,
+                                ParameterizedTypeName.get(RESPONSE_ENTITY_CLASS, entityType.box())
+                        ))
+                        .addStatement("return $T.empty()", OPTIONAL_CLASS)
+                        .build()
+                )
+                .addMethod(MethodSpec.methodBuilder("update")
+                        .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                        .addParameter(TypeName.get(idType), "id")
+                        .addParameter(entityType, "updated" + simpleName)
+                        .addParameter(service, "service")
+                        .returns(ParameterizedTypeName.get(
+                                OPTIONAL_CLASS,
+                                ParameterizedTypeName.get(RESPONSE_ENTITY_CLASS, entityType.box())
+                        ))
+                        .addStatement("return $T.empty()", OPTIONAL_CLASS)
+                        .build()
+                )
+                .addMethod(MethodSpec.methodBuilder("deleteById")
+                        .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                        .addParameter(TypeName.get(idType), "id")
+                        .addParameter(service, "service")
+                        .returns(ParameterizedTypeName.get(
+                                OPTIONAL_CLASS,
+                                ParameterizedTypeName.get(RESPONSE_ENTITY_CLASS, TypeName.VOID.box())
+                        ))
+                        .addStatement("return $T.empty()", OPTIONAL_CLASS)
+                        .build()
+                );
+
+        return builder;
     }
 
     private static MethodSpec generateGetAllMethod(TypeElement type, String simpleName, String policy) {
@@ -87,7 +173,12 @@ public class SproutControllerProcessor {
                         )
                 ))
                 .addJavadoc("Returns all $L items.\n", simpleName)
-                .addStatement("return $T.ok(service.findAll())", RESPONSE_ENTITY_CLASS);
+                .addStatement("""
+                                return override.flatMap(custom -> custom.getAll(service))
+                                        .orElseGet(() -> $T.ok(service.findAll()))
+                                """,
+                        RESPONSE_ENTITY_CLASS
+                );
 
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
@@ -116,9 +207,10 @@ public class SproutControllerProcessor {
                 ))
                 .addJavadoc("Returns a single $L item by its ID.\n", simpleName)
                 .addStatement("""
-                                return service.findById(id)
-                                        .map($T::ok)
-                                        .orElse($T.notFound().build())
+                                return override.flatMap(custom -> custom.getById(id, service))
+                                        .orElseGet(() -> service.findById(id)
+                                                .map($T::ok)
+                                                .orElse($T.notFound().build()))
                                 """,
                         RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
                 );
@@ -148,7 +240,11 @@ public class SproutControllerProcessor {
                         ClassName.get(type)
                 ))
                 .addJavadoc("Creates a new $L item.\n", simpleName)
-                .addStatement("return $T.status($T.CREATED).body(service.save(new$L))",
+                .addStatement("""
+                                return override.flatMap(custom -> custom.create(new$L, service))
+                                        .orElseGet(() -> $T.status($T.CREATED).body(service.save(new$L)))
+                                """,
+                        simpleName,
                         RESPONSE_ENTITY_CLASS, ClassName.get("org.springframework.http", "HttpStatus"), simpleName
                 );
 
@@ -185,11 +281,12 @@ public class SproutControllerProcessor {
                 ))
                 .addJavadoc("Updates an existing $L item by its ID.\n", simpleName)
                 .addStatement("""
-                                return service.update(id, updated$L)
-                                    .map($T::ok)
-                                    .orElse($T.notFound().build())
+                                return override.flatMap(custom -> custom.update(id, updated$L, service))
+                                        .orElseGet(() -> service.update(id, updated$L)
+                                                .map($T::ok)
+                                                .orElse($T.notFound().build()))
                                 """,
-                        simpleName, RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
+                        simpleName, simpleName, RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
                 );
 
         if (policy != null && !policy.isBlank()) {
@@ -218,7 +315,12 @@ public class SproutControllerProcessor {
                         TypeName.VOID.box()
                 ))
                 .addJavadoc("Deletes an existing $L item by its ID.\n", simpleName)
-                .addStatement("return service.deleteById(id) ? $T.noContent().build() : $T.notFound().build()",
+                .addStatement("""
+                                return override.flatMap(custom -> custom.deleteById(id, service))
+                                        .orElseGet(() -> service.deleteById(id)
+                                                ? $T.noContent().build()
+                                                : $T.notFound().build())
+                                """,
                         RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
                 );
 

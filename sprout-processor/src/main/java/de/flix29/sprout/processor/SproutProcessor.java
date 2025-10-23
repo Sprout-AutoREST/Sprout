@@ -135,12 +135,19 @@ public class SproutProcessor extends AbstractProcessor {
                     apiPath,
                     idType
             );
+            var controllerOverride = SproutControllerProcessor.generateControllerOverride(
+                    type,
+                    simpleName,
+                    basePackage,
+                    idType
+            );
 
             JavaFile markerFile = createJavaFile(basePackage + ".marker", marker);
             JavaFile repositoryFile = createJavaFile(basePackage + ".repositories", repository);
             JavaFile serviceFile = createJavaFile(basePackage + ".services", service);
+            JavaFile controllerOverrideFile = createJavaFile(basePackage + ".controllers", controllerOverride);
             JavaFile controllerFile = createJavaFile(basePackage + ".controllers", controller);
-            writeFiles(markerFile, repositoryFile, serviceFile, controllerFile);
+            writeFiles(markerFile, repositoryFile, serviceFile, controllerOverrideFile, controllerFile);
         }
         return true;
     }

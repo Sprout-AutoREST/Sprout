@@ -89,3 +89,37 @@ This is enabled by default when you include the sprout-runtime dependency. It'll
 
 ### Method-Level Security
 In addition to the `@SproutPolicy` annotation, you can use the `sprout.security.enabled` property to enable method-level security for your endpoints. This will use Spring Security to enforce access control based on the policies defined in your entities.
+
+## Customizing Generated Endpoints
+
+Every generated controller now looks for an optional override bean that can replace the default CRUD logic on a per-endpoint basis.
+For an entity named `Order`, Sprout generates an interface called `SproutOrderControllerOverride` in the `generated.controllers` package. Implement this interface, register it as a Spring bean (for example with `@Component`), and return a custom `ResponseEntity` from the endpoints you want to replace. Returning `Optional.empty()` keeps the default behaviour for that method.
+Replace `<your package>` with the package that contains your generated classes when importing the service.
+
+```java
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
+
+// import <your package>.generated.controllers.SproutOrderControllerOverride;
+// import <your package>.generated.services.SproutOrderService;
+
+@Component
+public class OrderControllerOverride implements SproutOrderControllerOverride {
+
+    @Override
+    public Optional<ResponseEntity<List<Order>>> create(Order newOrder, SproutOrderService service) {
+        // add custom business logic before falling back to the generated service
+        if (newOrder.isExpress()) {
+            return Optional.of(ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body(service.save(newOrder)));
+        }
+        return Optional.empty();
+    }
+}
+```
+
+All override methods receive the generated service instance so you can reuse the default repository-backed implementation or compose it with domain-specific behaviour.
