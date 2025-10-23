@@ -89,3 +89,25 @@ This is enabled by default when you include the sprout-runtime dependency. It'll
 
 ### Method-Level Security
 In addition to the `@SproutPolicy` annotation, you can use the `sprout.security.enabled` property to enable method-level security for your endpoints. This will use Spring Security to enforce access control based on the policies defined in your entities.
+
+### Customizing Generated Endpoints
+Sometimes you want to change the behaviour of a generated endpoint without touching the generated source code. Sprout provides an
+extension point for this scenario. For each entity you can declare a bean that implements the
+`SproutControllerDelegate<T, ID>` interface (available in the `sprout-runtime` module). The generated controller will pick up the
+delegate automatically and forward all incoming requests to it. Every method on the delegate receives callbacks to the default
+implementation so that you can compose your custom logic with the generated behaviour as needed.
+
+```java
+@Component
+class BookControllerDelegate implements SproutControllerDelegate<Book, UUID> {
+
+    @Override
+    public ResponseEntity<List<Book>> getAll(Supplier<List<Book>> findAll) {
+        var books = findAll.get();
+        // apply custom business logic here
+        return ResponseEntity.ok(books);
+    }
+}
+```
+
+If no delegate bean is present, Sprout falls back to the default CRUD behaviour.

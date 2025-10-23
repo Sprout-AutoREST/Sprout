@@ -19,6 +19,10 @@ public class SproutControllerProcessor {
     private static final String SPRING_WEB_ANNOTATION_PACKAGE = "org.springframework.web.bind.annotation";
     private static final ClassName PATH_VARIABLE_CLASS = ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "PathVariable");
     private static final ClassName RESPONSE_ENTITY_CLASS = ClassName.get("org.springframework.http", "ResponseEntity");
+    private static final ClassName OBJECT_PROVIDER_CLASS =
+            ClassName.get("org.springframework.beans.factory", "ObjectProvider");
+    private static final ClassName CONTROLLER_DELEGATE_CLASS =
+            ClassName.get("de.flix29.sprout.runtime.controller", "SproutControllerDelegate");
     private static final ClassName LIST_CLASS = ClassName.get("java.util", "List");
     private static final String APPLICATION_JSON = "application/json";
     private static final String ID = "/{id}";
@@ -39,6 +43,11 @@ public class SproutControllerProcessor {
     ) {
         final String componentName = "Sprout" + simpleName;
         ClassName service = ClassName.get(basePackage + ".services", componentName + "Service");
+        var delegateType = ParameterizedTypeName.get(
+                CONTROLLER_DELEGATE_CLASS,
+                ClassName.get(type),
+                TypeName.get(idType)
+        );
         var typeSpec = TypeSpec.classBuilder(componentName + "Controller")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "RestController"))
@@ -53,10 +62,21 @@ public class SproutControllerProcessor {
                                 Modifier.PRIVATE, Modifier.FINAL
                         ).build()
                 )
+                .addField(FieldSpec.builder(
+                                delegateType, "delegate",
+                                Modifier.PRIVATE, Modifier.FINAL
+                        ).build()
+                )
                 .addMethod(MethodSpec.constructorBuilder()
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(service, "service")
+                        .addParameter(ParameterizedTypeName.get(OBJECT_PROVIDER_CLASS, delegateType), "delegateProvider")
                         .addStatement("this.service = service")
+                        .addStatement("$T delegate = delegateProvider.getIfAvailable()", delegateType)
+                        .beginControlFlow("if (delegate == null)")
+                        .addStatement("delegate = new $T<>() {}", delegateType)
+                        .endControlFlow()
+                        .addStatement("this.delegate = delegate")
                         .build()
                 )
                 .addMethod(generateGetAllMethod(type, simpleName, policy == null ? null : policy.read()))
@@ -87,7 +107,7 @@ public class SproutControllerProcessor {
                         )
                 ))
                 .addJavadoc("Returns all $L items.\n", simpleName)
-                .addStatement("return $T.ok(service.findAll())", RESPONSE_ENTITY_CLASS);
+                .addStatement("return delegate.getAll(service::findAll)");
 
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
@@ -115,13 +135,7 @@ public class SproutControllerProcessor {
                         ClassName.get(type)
                 ))
                 .addJavadoc("Returns a single $L item by its ID.\n", simpleName)
-                .addStatement("""
-                                return service.findById(id)
-                                        .map($T::ok)
-                                        .orElse($T.notFound().build())
-                                """,
-                        RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
-                );
+                .addStatement("return delegate.getById(id, service::findById)");
 
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
@@ -148,9 +162,7 @@ public class SproutControllerProcessor {
                         ClassName.get(type)
                 ))
                 .addJavadoc("Creates a new $L item.\n", simpleName)
-                .addStatement("return $T.status($T.CREATED).body(service.save(new$L))",
-                        RESPONSE_ENTITY_CLASS, ClassName.get("org.springframework.http", "HttpStatus"), simpleName
-                );
+                .addStatement("return delegate.create(new$L, service::save)", simpleName);
 
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
@@ -184,13 +196,7 @@ public class SproutControllerProcessor {
                         ClassName.get(type)
                 ))
                 .addJavadoc("Updates an existing $L item by its ID.\n", simpleName)
-                .addStatement("""
-                                return service.update(id, updated$L)
-                                    .map($T::ok)
-                                    .orElse($T.notFound().build())
-                                """,
-                        simpleName, RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
-                );
+                .addStatement("return delegate.update(id, updated$L, service::update)", simpleName);
 
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
@@ -218,9 +224,7 @@ public class SproutControllerProcessor {
                         TypeName.VOID.box()
                 ))
                 .addJavadoc("Deletes an existing $L item by its ID.\n", simpleName)
-                .addStatement("return service.deleteById(id) ? $T.noContent().build() : $T.notFound().build()",
-                        RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
-                );
+                .addStatement("return delegate.delete(id, service::deleteById)");
 
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
