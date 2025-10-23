@@ -115,6 +115,15 @@ public class SproutProcessor extends AbstractProcessor {
 
             processingEnv.getMessager().printMessage(
                     Diagnostic.Kind.NOTE,
+                    String.format("[Sprout] Generating%s operations for %s ",
+                            annotation.readOnly() ? " readonly" : "", simpleName
+                    )
+            );
+            var operations = SproutOperationsGenerator
+                    .generateOperations(type, simpleName, annotation.readOnly(), idType);
+
+            processingEnv.getMessager().printMessage(
+                    Diagnostic.Kind.NOTE,
                     String.format("[Sprout] Generating%s service for %s ",
                             annotation.readOnly() ? " readonly" : "", simpleName
                     )
@@ -138,9 +147,10 @@ public class SproutProcessor extends AbstractProcessor {
 
             JavaFile markerFile = createJavaFile(basePackage + ".marker", marker);
             JavaFile repositoryFile = createJavaFile(basePackage + ".repositories", repository);
+            JavaFile operationsFile = createJavaFile(basePackage + ".services", operations);
             JavaFile serviceFile = createJavaFile(basePackage + ".services", service);
             JavaFile controllerFile = createJavaFile(basePackage + ".controllers", controller);
-            writeFiles(markerFile, repositoryFile, serviceFile, controllerFile);
+            writeFiles(markerFile, repositoryFile, operationsFile, serviceFile, controllerFile);
         }
         return true;
     }
