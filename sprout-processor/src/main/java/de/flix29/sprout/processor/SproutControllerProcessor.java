@@ -20,6 +20,9 @@ public class SproutControllerProcessor {
     private static final ClassName PATH_VARIABLE_CLASS = ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "PathVariable");
     private static final ClassName RESPONSE_ENTITY_CLASS = ClassName.get("org.springframework.http", "ResponseEntity");
     private static final ClassName LIST_CLASS = ClassName.get("java.util", "List");
+    private static final ClassName OPTIONAL_CLASS = ClassName.get("java.util", "Optional");
+    private static final ClassName OBJECT_PROVIDER_CLASS =
+            ClassName.get("org.springframework.beans.factory", "ObjectProvider");
     private static final String APPLICATION_JSON = "application/json";
     private static final String ID = "/{id}";
     private static final String VALUE = "value";
@@ -39,6 +42,8 @@ public class SproutControllerProcessor {
     ) {
         final String componentName = "Sprout" + simpleName;
         ClassName service = ClassName.get(basePackage + ".services", componentName + "Service");
+        ClassName overrideType = ClassName.get(basePackage + ".controllers", componentName + "ControllerOverride");
+        TypeName overridesList = ParameterizedTypeName.get(LIST_CLASS, overrideType);
         var typeSpec = TypeSpec.classBuilder(componentName + "Controller")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "RestController"))
@@ -53,26 +58,65 @@ public class SproutControllerProcessor {
                                 Modifier.PRIVATE, Modifier.FINAL
                         ).build()
                 )
+                .addField(FieldSpec.builder(
+                        overridesList, "overrides",
+                        Modifier.PRIVATE, Modifier.FINAL
+                ).build())
                 .addMethod(MethodSpec.constructorBuilder()
                         .addModifiers(Modifier.PUBLIC)
                         .addParameter(service, "service")
+                        .addParameter(ParameterizedTypeName.get(OBJECT_PROVIDER_CLASS, overrideType),
+                                "overridesProvider")
                         .addStatement("this.service = service")
+                        .addStatement("this.overrides = overridesProvider.orderedStream().toList()")
                         .build()
                 )
-                .addMethod(generateGetAllMethod(type, simpleName, policy == null ? null : policy.read()))
-                .addMethod(generateGetByIdMethod(type, simpleName, idType, policy == null ? null : policy.read()));
+                .addMethod(generateGetAllMethod(
+                        type,
+                        simpleName,
+                        policy == null ? null : policy.read(),
+                        overrideType
+                ))
+                .addMethod(generateGetByIdMethod(
+                        type,
+                        simpleName,
+                        idType,
+                        policy == null ? null : policy.read(),
+                        overrideType
+                ));
 
         if (!readOnly) {
             typeSpec
-                    .addMethod(generatePostMethod(type, simpleName, policy == null ? null : policy.create()))
-                    .addMethod(generatePutMethod(type, simpleName, idType, policy == null ? null : policy.update()))
-                    .addMethod(generateDeleteMethod(simpleName, idType, policy == null ? null : policy.delete()));
+                    .addMethod(generatePostMethod(
+                            type,
+                            simpleName,
+                            policy == null ? null : policy.create(),
+                            overrideType
+                    ))
+                    .addMethod(generatePutMethod(
+                            type,
+                            simpleName,
+                            idType,
+                            policy == null ? null : policy.update(),
+                            overrideType
+                    ))
+                    .addMethod(generateDeleteMethod(
+                            simpleName,
+                            idType,
+                            policy == null ? null : policy.delete(),
+                            overrideType
+                    ));
         }
 
         return typeSpec;
     }
 
-    private static MethodSpec generateGetAllMethod(TypeElement type, String simpleName, String policy) {
+    private static MethodSpec generateGetAllMethod(
+            TypeElement type,
+            String simpleName,
+            String policy,
+            ClassName overrideType
+    ) {
         var methodSpec = MethodSpec.methodBuilder("getAll")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
@@ -87,7 +131,21 @@ public class SproutControllerProcessor {
                         )
                 ))
                 .addJavadoc("Returns all $L items.\n", simpleName)
-                .addStatement("return $T.ok(service.findAll())", RESPONSE_ENTITY_CLASS);
+                .beginControlFlow("for (var override : overrides)")
+                .addStatement("$T response = override.getAll(service)",
+                        ParameterizedTypeName.get(
+                                OPTIONAL_CLASS,
+                                ParameterizedTypeName.get(
+                                        RESPONSE_ENTITY_CLASS,
+                                        ParameterizedTypeName.get(LIST_CLASS, ClassName.get(type))
+                                )
+                        )
+                )
+                .beginControlFlow("if (response.isPresent())")
+                .addStatement("return response.get()")
+                .endControlFlow()
+                .endControlFlow()
+                .addStatement("return $T.defaultGetAll(service)", overrideType);
 
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
@@ -97,7 +155,11 @@ public class SproutControllerProcessor {
     }
 
     private static MethodSpec generateGetByIdMethod(
-            TypeElement type, String simpleName, TypeMirror idType, String policy
+            TypeElement type,
+            String simpleName,
+            TypeMirror idType,
+            String policy,
+            ClassName overrideType
     ) {
         var methodSpec = MethodSpec.methodBuilder("getById")
                 .addModifiers(Modifier.PUBLIC)
@@ -115,13 +177,21 @@ public class SproutControllerProcessor {
                         ClassName.get(type)
                 ))
                 .addJavadoc("Returns a single $L item by its ID.\n", simpleName)
-                .addStatement("""
-                                return service.findById(id)
-                                        .map($T::ok)
-                                        .orElse($T.notFound().build())
-                                """,
-                        RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
-                );
+                .beginControlFlow("for (var override : overrides)")
+                .addStatement("$T response = override.getById(id, service)",
+                        ParameterizedTypeName.get(
+                                OPTIONAL_CLASS,
+                                ParameterizedTypeName.get(
+                                        RESPONSE_ENTITY_CLASS,
+                                        ClassName.get(type)
+                                )
+                        )
+                )
+                .beginControlFlow("if (response.isPresent())")
+                .addStatement("return response.get()")
+                .endControlFlow()
+                .endControlFlow()
+                .addStatement("return $T.defaultGetById(id, service)", overrideType);
 
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
@@ -130,7 +200,12 @@ public class SproutControllerProcessor {
         return methodSpec.build();
     }
 
-    private static MethodSpec generatePostMethod(TypeElement type, String simpleName, String policy) {
+    private static MethodSpec generatePostMethod(
+            TypeElement type,
+            String simpleName,
+            String policy,
+            ClassName overrideType
+    ) {
         var methodSpec = MethodSpec.methodBuilder("create")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
@@ -148,9 +223,22 @@ public class SproutControllerProcessor {
                         ClassName.get(type)
                 ))
                 .addJavadoc("Creates a new $L item.\n", simpleName)
-                .addStatement("return $T.status($T.CREATED).body(service.save(new$L))",
-                        RESPONSE_ENTITY_CLASS, ClassName.get("org.springframework.http", "HttpStatus"), simpleName
-                );
+                .beginControlFlow("for (var override : overrides)")
+                .addStatement("$T response = override.create(new$L, service)",
+                        ParameterizedTypeName.get(
+                                OPTIONAL_CLASS,
+                                ParameterizedTypeName.get(
+                                        RESPONSE_ENTITY_CLASS,
+                                        ClassName.get(type)
+                                )
+                        ),
+                        simpleName
+                )
+                .beginControlFlow("if (response.isPresent())")
+                .addStatement("return response.get()")
+                .endControlFlow()
+                .endControlFlow()
+                .addStatement("return $T.defaultCreate(new$L, service)", overrideType, simpleName);
 
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
@@ -159,7 +247,13 @@ public class SproutControllerProcessor {
         return methodSpec.build();
     }
 
-    private static MethodSpec generatePutMethod(TypeElement type, String simpleName, TypeMirror idType, String policy) {
+    private static MethodSpec generatePutMethod(
+            TypeElement type,
+            String simpleName,
+            TypeMirror idType,
+            String policy,
+            ClassName overrideType
+    ) {
         var methodSpec = MethodSpec.methodBuilder("update")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
@@ -184,13 +278,22 @@ public class SproutControllerProcessor {
                         ClassName.get(type)
                 ))
                 .addJavadoc("Updates an existing $L item by its ID.\n", simpleName)
-                .addStatement("""
-                                return service.update(id, updated$L)
-                                    .map($T::ok)
-                                    .orElse($T.notFound().build())
-                                """,
-                        simpleName, RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
-                );
+                .beginControlFlow("for (var override : overrides)")
+                .addStatement("$T response = override.update(id, updated$L, service)",
+                        ParameterizedTypeName.get(
+                                OPTIONAL_CLASS,
+                                ParameterizedTypeName.get(
+                                        RESPONSE_ENTITY_CLASS,
+                                        ClassName.get(type)
+                                )
+                        ),
+                        simpleName
+                )
+                .beginControlFlow("if (response.isPresent())")
+                .addStatement("return response.get()")
+                .endControlFlow()
+                .endControlFlow()
+                .addStatement("return $T.defaultUpdate(id, updated$L, service)", overrideType, simpleName);
 
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
@@ -199,7 +302,12 @@ public class SproutControllerProcessor {
         return methodSpec.build();
     }
 
-    private static MethodSpec generateDeleteMethod(String simpleName, TypeMirror idType, String policy) {
+    private static MethodSpec generateDeleteMethod(
+            String simpleName,
+            TypeMirror idType,
+            String policy,
+            ClassName overrideType
+    ) {
         var methodSpec = MethodSpec.methodBuilder("deleteById")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
@@ -218,9 +326,21 @@ public class SproutControllerProcessor {
                         TypeName.VOID.box()
                 ))
                 .addJavadoc("Deletes an existing $L item by its ID.\n", simpleName)
-                .addStatement("return service.deleteById(id) ? $T.noContent().build() : $T.notFound().build()",
-                        RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
-                );
+                .beginControlFlow("for (var override : overrides)")
+                .addStatement("$T response = override.deleteById(id, service)",
+                        ParameterizedTypeName.get(
+                                OPTIONAL_CLASS,
+                                ParameterizedTypeName.get(
+                                        RESPONSE_ENTITY_CLASS,
+                                        TypeName.VOID.box()
+                                )
+                        )
+                )
+                .beginControlFlow("if (response.isPresent())")
+                .addStatement("return response.get()")
+                .endControlFlow()
+                .endControlFlow()
+                .addStatement("return $T.defaultDeleteById(id, service)", overrideType);
 
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));

@@ -89,3 +89,32 @@ This is enabled by default when you include the sprout-runtime dependency. It'll
 
 ### Method-Level Security
 In addition to the `@SproutPolicy` annotation, you can use the `sprout.security.enabled` property to enable method-level security for your endpoints. This will use Spring Security to enforce access control based on the policies defined in your entities.
+
+## Customizing Generated Endpoints
+
+Sprout generates controllers in the `...generated.controllers` package. For every controller there is now a matching `Sprout<Entity>ControllerOverride` interface. You can implement this interface in your application and register it as a Spring bean (e.g. using `@Component`) to override individual endpoints or inject additional business logic without touching the generated sources.
+
+Every override method returns an `Optional<ResponseEntity<...>>`. If the optional contains a value, the controller will use your response. If it is empty, Sprout falls back to the default implementation. You can use the provided static helper methods such as `SproutBookControllerOverride.defaultGetById(id, service)` when you only need to extend the standard behaviour.
+
+```java
+@Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class CustomBookOverride implements SproutBookControllerOverride {
+
+    @Override
+    public Optional<ResponseEntity<Book>> getById(Long id, SproutBookService service) {
+        return service.findById(id)
+                .filter(Book::isPublished)
+                .map(ResponseEntity::ok);
+    }
+
+    @Override
+    public Optional<ResponseEntity<Book>> create(Book entity, SproutBookService service) {
+        // Do some custom validation and delegate to the default behaviour afterwards
+        validate(entity);
+        return Optional.of(SproutBookControllerOverride.defaultCreate(entity, service));
+    }
+}
+```
+
+Multiple overrides can be registered for the same entity. Sprout injects them in the order defined by Spring (using `@Order`/`Ordered` or `@Priority`), so you can build pipelines of custom logic when needed.
