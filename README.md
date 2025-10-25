@@ -21,7 +21,7 @@ The project consists of three main modules:
 To get started with Sprout, just follow these simple steps:
 
 ### Prerequisites
-- Java 21 or higher
+- Java 17 or higher is recommended (older versions might work, but are not tested)
 - SpringBoot 3.5.x or higher
 
 1. Add the Sprout-annotation dependency to your Maven project and the sprout-processor to the maven-compiler-plugin.
@@ -65,20 +65,15 @@ With this simple setup, you already got a RestController with five REST endpoint
 
 These controllers are supplied with a corresponding Service and Repository layer, following best practices for SpringBoot applications.
 
-## Optional Features
-Sprout also offers several optional features that you can enable by adding additional annotations to your entities:
-- `@SproutPolicy` Lets you define custom access policies for your each endpoint.
-- `@SproutId` Lets you define which field of your entity should be used as the ID field if you don't want to use the Database ID.
+## Overriding Generated Logic
 
-### Overriding Generated Logic
-
-Every generated service now exposes a `Sprout{Name}Operations` interface that is used by the controller.
+Every generated service exposes a `Sprout{Name}Operations` interface that is used by the controller and calls default implementations for the service.
 You can replace the default implementation by providing your own Spring bean that implements this interface and marking it as `@Primary`.
 Only the methods you override will be taken from your bean; the generated class remains untouched.
 
 ```java
-@Primary
 @Service
+@Primary
 class CustomBookOperations extends SproutBookService {
 
     CustomBookOperations(SproutBookRepository repository) {
@@ -92,6 +87,11 @@ class CustomBookOperations extends SproutBookService {
     }
 }
 ```
+
+## Optional Features
+Sprout also offers several optional features that you can enable by adding additional annotations to your entities:
+- `@SproutPolicy` Lets you define custom access policies for your each endpoint.
+- `@SproutId` Lets you define which field of your entity should be used as the ID field if you don't want to use the Database ID.
 
 Because the controllers depend on the interface instead of the generated service class, Spring will automatically inject your custom bean wherever Sprout needs it.
 
