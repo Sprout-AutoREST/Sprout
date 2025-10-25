@@ -12,7 +12,6 @@
     <artifactId>sprout-runtime</artifactId>
     <name>Sprout AutoREST Runtime</name>
     <description>Runtime support library consumed by applications using Sprout AutoREST.</description>
-    <url>${project.url}</url>
 
     <dependencies>
         <dependency>

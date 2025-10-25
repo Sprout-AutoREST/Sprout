@@ -12,7 +12,6 @@
     <artifactId>sprout-processor</artifactId>
     <name>Sprout AutoREST Processor</name>
     <description>Annotation processor generating REST scaffolding based on Sprout annotations.</description>
-    <url>${project.url}</url>
 
     <dependencies>
         <dependency>
