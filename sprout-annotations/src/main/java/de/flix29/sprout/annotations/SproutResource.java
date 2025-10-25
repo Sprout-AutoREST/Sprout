@@ -19,21 +19,25 @@ import java.lang.annotation.Target;
 public @interface SproutResource {
     /**
      * Optional name for the resource and generated Classes. Default is the class name.
+     * @return the resource name
      */
     String name() default "";
 
     /**
      * Optional path (e.g. "/products"). Default is derived as "api/[name]/".
+     * @return the resource path
      */
     String path() default "";
 
     /**
      * If true, only read endpoints are generated for this resource.
+     * @return true if the resource is read-only
      */
     boolean readOnly() default false;
 
     /**
      * Optional description for the resource.
+     * @return the resource description
      */
     String summary() default "";
 }

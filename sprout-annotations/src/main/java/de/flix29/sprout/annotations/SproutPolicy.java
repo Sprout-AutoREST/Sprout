@@ -17,21 +17,25 @@ import java.lang.annotation.Target;
 public @interface SproutPolicy {
     /**
      * The policy string for the read operation. Can be empty if no policy is needed.
+     * @return the read policy string
      */
     String read() default "";
 
     /**
      * The policy string for the create operation. Can be empty if no policy is needed.
+     * @return the create policy string
      */
     String create() default "";
 
     /**
      * The policy string for the update operation. Can be empty if no policy is needed.
+     * @return the update policy string
      */
     String update() default "";
 
     /**
      * The policy string for the delete operation. Can be empty if no policy is needed.
+     * @return the delete policy string
      */
     String delete() default "";
 }
