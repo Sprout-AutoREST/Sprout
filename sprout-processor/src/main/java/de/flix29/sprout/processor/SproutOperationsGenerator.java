@@ -10,7 +10,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
-final class SproutOperationsGenerator {
+class SproutOperationsGenerator {
 
     private static final ClassName LIST = ClassName.get("java.util", "List");
     private static final ClassName OPTIONAL = ClassName.get("java.util", "Optional");
@@ -19,7 +19,7 @@ final class SproutOperationsGenerator {
         // Utility class
     }
 
-    protected static TypeSpec.Builder generateOperations(
+    public static TypeSpec.Builder generateOperations(
             TypeElement type,
             String simpleName,
             boolean readOnly,

@@ -40,7 +40,7 @@ public class SproutServiceGenerator {
                 .addAnnotation(SERVICE)
                 .addSuperinterface(operations)
                 .addField(FieldSpec.builder(
-                        repository, "repository", Modifier.PRIVATE, Modifier.FINAL
+                        repository, "repository", Modifier.PROTECTED, Modifier.FINAL
                 ).build())
                 .addMethod(MethodSpec.constructorBuilder()
                         .addModifiers(Modifier.PUBLIC)
