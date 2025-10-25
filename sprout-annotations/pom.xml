@@ -10,6 +10,9 @@
     </parent>
 
     <artifactId>sprout-annotations</artifactId>
+    <name>Sprout AutoREST Annotations</name>
+    <description>Annotations used by the Sprout AutoREST processor.</description>
+    <url>${project.url}</url>
 
     <dependencies>
         <dependency>

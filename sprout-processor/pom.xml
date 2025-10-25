@@ -10,12 +10,15 @@
     </parent>
 
     <artifactId>sprout-processor</artifactId>
+    <name>Sprout AutoREST Processor</name>
+    <description>Annotation processor generating REST scaffolding based on Sprout annotations.</description>
+    <url>${project.url}</url>
 
     <dependencies>
         <dependency>
             <groupId>de.flix29</groupId>
             <artifactId>sprout-annotations</artifactId>
-            <version>1.0.0</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.squareup</groupId>
