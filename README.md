@@ -70,6 +70,33 @@ Sprout also offers several optional features that you can enable by adding addit
 - `@SproutPolicy` Lets you define custom access policies for your each endpoint.
 - `@SproutId` Lets you define which field of your entity should be used as the ID field if you don't want to use the Database ID.
 
+### Overriding Generated Logic
+
+Every generated service now exposes a `Sprout{Name}Operations` interface that is used by the controller.
+The generated `Sprout{Name}Service` is registered with `@ConditionalOnMissingBean`, so if you provide your own Spring bean that implements the operations interface, Sprout automatically backs off and uses your implementation instead.
+
+You can either implement the interface directly or extend the generated service and override only the methods you need:
+
+```java
+@Service
+class CustomBookOperations extends SproutBookService {
+
+    CustomBookOperations(SproutBookRepository repository) {
+        super(repository);
+    }
+
+    @Override
+    public List<Book> findAll() {
+        // add your business logic here
+        return super.findAll();
+    }
+}
+```
+
+Because the controller depends on the `Sprout{Name}Operations` contract instead of the generated service class, Spring injects your bean transparently without any additional configuration.
+
+If you ever need to replace the controller altogether—for example to change request mappings—you can provide your own `Sprout{Name}Controller` bean (e.g. by subclassing the generated controller). The generated controller is also guarded by `@ConditionalOnMissingBean`, so your custom bean will take precedence and the generated controller will be skipped automatically.
+
 If you add the sprout-runtime dependency to your project, you can also use the following features:
 
 ```xml

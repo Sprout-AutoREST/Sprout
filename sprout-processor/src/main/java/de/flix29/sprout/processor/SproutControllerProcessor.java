@@ -19,6 +19,10 @@ public class SproutControllerProcessor {
     private static final String SPRING_WEB_ANNOTATION_PACKAGE = "org.springframework.web.bind.annotation";
     private static final ClassName PATH_VARIABLE_CLASS = ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "PathVariable");
     private static final ClassName RESPONSE_ENTITY_CLASS = ClassName.get("org.springframework.http", "ResponseEntity");
+    private static final ClassName CONDITIONAL_ON_MISSING_BEAN = ClassName.get(
+            "org.springframework.boot.autoconfigure.condition",
+            "ConditionalOnMissingBean"
+    );
     private static final ClassName LIST_CLASS = ClassName.get("java.util", "List");
     private static final String APPLICATION_JSON = "application/json";
     private static final String ID = "/{id}";
@@ -38,7 +42,8 @@ public class SproutControllerProcessor {
             TypeMirror idType
     ) {
         final String componentName = "Sprout" + simpleName;
-        ClassName service = ClassName.get(basePackage + ".services", componentName + "Service");
+        ClassName operations = ClassName.get(basePackage + ".services", componentName + "Operations");
+        ClassName controllerType = ClassName.get(basePackage + ".controllers", componentName + "Controller");
         var typeSpec = TypeSpec.classBuilder(componentName + "Controller")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "RestController"))
@@ -48,15 +53,19 @@ public class SproutControllerProcessor {
                         .addMember("produces", "$S", APPLICATION_JSON)
                         .build()
                 )
+                .addAnnotation(AnnotationSpec.builder(CONDITIONAL_ON_MISSING_BEAN)
+                        .addMember("value", "$T.class", controllerType)
+                        .build()
+                )
                 .addField(FieldSpec.builder(
-                                service, "service",
+                                operations, "operations",
                                 Modifier.PRIVATE, Modifier.FINAL
                         ).build()
                 )
                 .addMethod(MethodSpec.constructorBuilder()
                         .addModifiers(Modifier.PUBLIC)
-                        .addParameter(service, "service")
-                        .addStatement("this.service = service")
+                        .addParameter(operations, "operations")
+                        .addStatement("this.operations = operations")
                         .build()
                 )
                 .addMethod(generateGetAllMethod(type, simpleName, policy == null ? null : policy.read()))
@@ -87,7 +96,7 @@ public class SproutControllerProcessor {
                         )
                 ))
                 .addJavadoc("Returns all $L items.\n", simpleName)
-                .addStatement("return $T.ok(service.findAll())", RESPONSE_ENTITY_CLASS);
+                .addStatement("return $T.ok(operations.findAll())", RESPONSE_ENTITY_CLASS);
 
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
@@ -116,7 +125,7 @@ public class SproutControllerProcessor {
                 ))
                 .addJavadoc("Returns a single $L item by its ID.\n", simpleName)
                 .addStatement("""
-                                return service.findById(id)
+                                return operations.findById(id)
                                         .map($T::ok)
                                         .orElse($T.notFound().build())
                                 """,
@@ -148,7 +157,7 @@ public class SproutControllerProcessor {
                         ClassName.get(type)
                 ))
                 .addJavadoc("Creates a new $L item.\n", simpleName)
-                .addStatement("return $T.status($T.CREATED).body(service.save(new$L))",
+                .addStatement("return $T.status($T.CREATED).body(operations.save(new$L))",
                         RESPONSE_ENTITY_CLASS, ClassName.get("org.springframework.http", "HttpStatus"), simpleName
                 );
 
@@ -185,7 +194,7 @@ public class SproutControllerProcessor {
                 ))
                 .addJavadoc("Updates an existing $L item by its ID.\n", simpleName)
                 .addStatement("""
-                                return service.update(id, updated$L)
+                                return operations.update(id, updated$L)
                                     .map($T::ok)
                                     .orElse($T.notFound().build())
                                 """,
@@ -218,7 +227,7 @@ public class SproutControllerProcessor {
                         TypeName.VOID.box()
                 ))
                 .addJavadoc("Deletes an existing $L item by its ID.\n", simpleName)
-                .addStatement("return service.deleteById(id) ? $T.noContent().build() : $T.notFound().build()",
+                .addStatement("return operations.deleteById(id) ? $T.noContent().build() : $T.notFound().build()",
                         RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
                 );
 

@@ -16,10 +16,15 @@ public class SproutServiceGenerator {
 
     private static final ClassName LIST = ClassName.get("java.util", "List");
     private static final ClassName OPTIONAL = ClassName.get("java.util", "Optional");
+    private static final ClassName OVERRIDE = ClassName.get(Override.class);
     private static final ClassName BEAN_UTILS = ClassName.get("org.springframework.beans", "BeanUtils");
     private static final ClassName SERVICE = ClassName.get("org.springframework.stereotype", "Service");
     private static final ClassName TRANSACTIONAL =
             ClassName.get("org.springframework.transaction.annotation", "Transactional");
+    private static final ClassName CONDITIONAL_ON_MISSING_BEAN = ClassName.get(
+            "org.springframework.boot.autoconfigure.condition",
+            "ConditionalOnMissingBean"
+    );
 
     private SproutServiceGenerator() {
         // Utility class
@@ -30,12 +35,18 @@ public class SproutServiceGenerator {
     ) {
         final String componentName = "Sprout" + simpleName;
         final ClassName repository = ClassName.get(basePath + ".repositories", componentName + "Repository");
+        final ClassName operations = ClassName.get(basePath + ".services", componentName + "Operations");
         final ClassName entityType = ClassName.get(type);
         final TypeName idT = TypeName.get(idType);
 
         var builder = TypeSpec.classBuilder(componentName + "Service")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(SERVICE)
+                .addAnnotation(AnnotationSpec.builder(CONDITIONAL_ON_MISSING_BEAN)
+                        .addMember("value", "$T.class", operations)
+                        .build()
+                )
+                .addSuperinterface(operations)
                 .addField(FieldSpec.builder(
                         repository, "repository", Modifier.PRIVATE, Modifier.FINAL
                 ).build())
@@ -65,6 +76,7 @@ public class SproutServiceGenerator {
 
     private static MethodSpec generateFindAllMethod(ClassName entityType) {
         return MethodSpec.methodBuilder("findAll")
+                .addAnnotation(OVERRIDE)
                 .addModifiers(Modifier.PUBLIC)
                 .returns(ParameterizedTypeName.get(LIST, entityType))
                 .addStatement("return repository.findAll()")
@@ -73,6 +85,7 @@ public class SproutServiceGenerator {
 
     private static MethodSpec generateFindByIdMethod(ClassName entityType, TypeName idT) {
         return MethodSpec.methodBuilder("findById")
+                .addAnnotation(OVERRIDE)
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(idT, "id")
                 .returns(ParameterizedTypeName.get(OPTIONAL, entityType))
@@ -83,6 +96,7 @@ public class SproutServiceGenerator {
     private static MethodSpec generateSaveMethod(ClassName entityType) {
         return MethodSpec.methodBuilder("save")
                 .addAnnotation(TRANSACTIONAL)
+                .addAnnotation(OVERRIDE)
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(entityType, "entity")
                 .returns(entityType)
@@ -93,6 +107,7 @@ public class SproutServiceGenerator {
     private static MethodSpec generateUpdateMethod(ClassName entityType, TypeName idT) {
         return MethodSpec.methodBuilder("update")
                 .addAnnotation(TRANSACTIONAL)
+                .addAnnotation(OVERRIDE)
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(idT, "id")
                 .addParameter(entityType, "entity")
@@ -107,6 +122,7 @@ public class SproutServiceGenerator {
     private static MethodSpec generateDeleteMethod(TypeName idT) {
         return MethodSpec.methodBuilder("deleteById")
                 .addAnnotation(TRANSACTIONAL)
+                .addAnnotation(OVERRIDE)
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(idT, "id")
                 .returns(TypeName.BOOLEAN)
