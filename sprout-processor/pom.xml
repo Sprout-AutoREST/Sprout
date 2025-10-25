@@ -6,7 +6,7 @@
     <parent>
         <groupId>de.flix29</groupId>
         <artifactId>sprout</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
+        <version>1.0.0</version>
     </parent>
 
     <artifactId>sprout-processor</artifactId>
@@ -15,7 +15,7 @@
         <dependency>
             <groupId>de.flix29</groupId>
             <artifactId>sprout-annotations</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <version>1.0.0</version>
         </dependency>
         <dependency>
             <groupId>com.squareup</groupId>

@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.flix29</groupId>
     <artifactId>sprout</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
     <name>Sprout AutoREST</name>
     <description>Compile-time REST scaffolding for Spring Boot</description>
