@@ -11,6 +11,38 @@
 
     <artifactId>sprout-annotations</artifactId>
 
+    <name>Sprout Annotations</name>
+    <description>Compile-time REST scaffolding for Spring Boot - Annotations</description>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <id>flix29</id>
+            <name>Felix Hallerbach</name>
+            <email>info@flix29.de</email>
+        </developer>
+    </developers>
+    <scm>
+        <connection>scm:git:https://github.com/Flix-29/Sprout.git</connection>
+        <developerConnection>scm:git:git@github.com:flix-29/Sprout.git</developerConnection>
+        <url>https://github.com/Flix-29/Sprout</url>
+    </scm>
+    <url>https://github.com/Flix-29/Sprout</url>
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/Flix-29/Sprout/issues</url>
+    </issueManagement>
+    <ciManagement>
+        <system>GitHub Actions</system>
+        <url>https://github.com/Flix-29/Sprout/actions</url>
+    </ciManagement>
+
     <dependencies>
         <dependency>
             <groupId>jakarta.persistence</groupId>
