@@ -139,7 +139,7 @@ public class SproutProcessor extends AbstractProcessor {
                     type,
                     simpleName,
                     basePackage,
-                    annotation.readOnly(),
+                    annotation,
                     policyNeeded ? policyAnnotation : null,
                     apiPath,
                     idType

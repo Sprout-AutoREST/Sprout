@@ -19,6 +19,7 @@ import java.lang.annotation.Target;
 public @interface SproutResource {
     /**
      * Optional name for the resource and generated Classes. Default is the class name.
+     * If {@link SproutResource#tag()}  is not set, this will also be used as the Swagger tag.
      * @return the resource name
      */
     String name() default "";
@@ -36,7 +37,19 @@ public @interface SproutResource {
     boolean readOnly() default false;
 
     /**
-     * Optional description for the resource.
+     * If true, Swagger documentation is generated for this resource.
+     * @return true if Swagger docs should be generated
+     */
+    boolean generateSwaggerDocs() default true;
+
+    /**
+     * Optional tag for the resource. This will be used in the Swagger documentation if enabled.
+     * @return the resource tag
+     */
+    String tag() default "";
+
+    /**
+     * Optional description for the resource. This will be used in the Swagger documentation if enabled.
      * @return the resource description
      */
     String summary() default "";
