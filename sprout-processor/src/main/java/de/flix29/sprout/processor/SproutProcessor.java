@@ -49,6 +49,8 @@ public class SproutProcessor extends AbstractProcessor {
     private static final String JAVAX_ENTITY = "javax.persistence.Entity";
 
     private static final String PRE_AUTHORIZE = "org.springframework.security.access.prepost.PreAuthorize";
+    private static final String SWAGGER_API_RESPONSE = "io.swagger.v3.oas.annotations.responses.ApiResponses";
+    private static final String SWAGGER_TAG = "io.swagger.v3.oas.annotations.tags.Tag";
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
@@ -77,6 +79,7 @@ public class SproutProcessor extends AbstractProcessor {
                     (annotation.path() != null && !annotation.path().isBlank()) ? annotation.path() : derivedPath;
 
             boolean policyNeeded = checkIfPolicyNeeded(policyAnnotation);
+            boolean swaggerNeeded = checkIfSwaggerNeeded(annotation);
 
             String basePackage = baseGeneratedPackage(type);
             String className = simpleName + "SproutMarker";
@@ -140,6 +143,7 @@ public class SproutProcessor extends AbstractProcessor {
                     simpleName,
                     basePackage,
                     annotation,
+                    swaggerNeeded,
                     policyNeeded ? policyAnnotation : null,
                     apiPath,
                     idType
@@ -277,6 +281,20 @@ public class SproutProcessor extends AbstractProcessor {
             processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
                     "[Sprout] @SproutPolicy found but Spring Security is not on the classpath. Please add " +
                             "spring-security-core and spring-security-config to your dependencies."
+            );
+            return false;
+        }
+        return true;
+    }
+
+    private boolean checkIfSwaggerNeeded(SproutResource resourceAnnotation) {
+        if (resourceAnnotation != null &&
+                resourceAnnotation.generateSwaggerDocs() &&
+                (!hasClass(SWAGGER_API_RESPONSE) || !hasClass(SWAGGER_TAG))
+        ) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                    "[Sprout] Trying to generate Swagger Documentation but springdoc-openapi is not on the classpath." +
+                            " Please add springdoc-openapi-starter-webmvc-ui to your dependencies."
             );
             return false;
         }

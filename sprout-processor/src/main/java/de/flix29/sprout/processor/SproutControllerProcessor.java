@@ -57,6 +57,7 @@ public class SproutControllerProcessor {
             String simpleName,
             String basePackage,
             SproutResource sproutResource,
+            boolean swaggerNeeded,
             SproutPolicy policy,
             String apiPath,
             TypeMirror idType
@@ -83,16 +84,16 @@ public class SproutControllerProcessor {
                         type,
                         simpleName,
                         policy == null ? null : policy.read(),
-                        sproutResource.generateSwaggerDocs()
+                        sproutResource.generateSwaggerDocs() && swaggerNeeded
                 )).addMethod(generateGetByIdMethod(
                         type,
                         simpleName,
                         idType,
                         policy == null ? null : policy.read(),
-                        sproutResource.generateSwaggerDocs()
+                        sproutResource.generateSwaggerDocs() && swaggerNeeded
                 ));
 
-        if (sproutResource.generateSwaggerDocs()) {
+        if (sproutResource.generateSwaggerDocs() && swaggerNeeded) {
             typeSpec.addAnnotation(AnnotationSpec
                     .builder(ClassName.get("io.swagger.v3.oas.annotations.tags", "Tag"))
                     .addMember("name", "$S", getTagName(sproutResource, simpleName))
@@ -106,18 +107,18 @@ public class SproutControllerProcessor {
                     type,
                     simpleName,
                     policy == null ? null : policy.create(),
-                    sproutResource.generateSwaggerDocs()
+                    sproutResource.generateSwaggerDocs() && swaggerNeeded
             )).addMethod(generatePutMethod(
                     type,
                     simpleName,
                     idType,
                     policy == null ? null : policy.update(),
-                    sproutResource.generateSwaggerDocs()
+                    sproutResource.generateSwaggerDocs() && swaggerNeeded
             )).addMethod(generateDeleteMethod(
                     simpleName,
                     idType,
                     policy == null ? null : policy.delete(),
-                    sproutResource.generateSwaggerDocs()
+                    sproutResource.generateSwaggerDocs() && swaggerNeeded
             ));
         }
 
