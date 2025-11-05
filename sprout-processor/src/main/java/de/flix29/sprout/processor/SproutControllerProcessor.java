@@ -14,6 +14,7 @@ import de.flix29.sprout.annotations.SproutResource;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
+import java.util.Arrays;
 
 public class SproutControllerProcessor {
 
@@ -23,7 +24,25 @@ public class SproutControllerProcessor {
     private static final ClassName PATH_VARIABLE_CLASS = ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "PathVariable");
     private static final ClassName RESPONSE_ENTITY_CLASS = ClassName.get("org.springframework.http", "ResponseEntity");
     private static final ClassName LIST_CLASS = ClassName.get("java.util", "List");
-    private static final ClassName API_RESPONSES = ClassName.get("io.swagger.v3.oas.annotations.responses", "ApiResponses");
+    private static final ClassName API_RESPONSES =
+            ClassName.get("io.swagger.v3.oas.annotations.responses", "ApiResponses");
+
+    private static final String SWAGGER_OK =
+            generateSwaggerApiResponseString(200, "Successful retrieval");
+    private static final String SWAGGER_CREATED =
+            generateSwaggerApiResponseString(201, "Successful created");
+    private static final String SWAGGER_NO_CONTENT =
+            generateSwaggerApiResponseString(204, "Successful deleted");
+    private static final String SWAGGER_BAD_REQUEST =
+            generateSwaggerApiResponseString(400, "Invalid input data");
+    private static final String SWAGGER_UNAUTHORIZED =
+            generateSwaggerApiResponseString(401, "Unauthorized");
+    private static final String SWAGGER_ACCESS_DENIED =
+            generateSwaggerApiResponseString(403, "Access denied");
+    private static final String SWAGGER_NOT_FOUND =
+            generateSwaggerApiResponseString(404, "Not found");
+    private static final String SWAGGER_INTERNAL_SERVER_ERROR =
+            generateSwaggerApiResponseString(500, "Internal server error");
 
     private static final String APPLICATION_JSON = "application/json";
     private static final String ID = "/{id}";
@@ -123,23 +142,12 @@ public class SproutControllerProcessor {
                 .addStatement("return $T.ok(operations.findAll())", RESPONSE_ENTITY_CLASS);
 
         if (generateSwaggerDocs) {
-            methodSpec.addAnnotation(AnnotationSpec
-                    .builder(API_RESPONSES)
-                    .addMember(VALUE, "$L", """
-                            {
-                                @%s(responseCode = "200", description = "Successful retrieval of %s items"),
-                                @%s(responseCode = "401", description = "Unauthorized"),
-                                @%s(responseCode = "403", description = "Access denied"),
-                                @%s(responseCode = "500", description = "Internal server error")
-                            }
-                            """.formatted(
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    simpleName,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    SWAGGER_API_RESPONSE_ANNOTATION
-                            )
-                    ).build()
+            addSwaggerApiResponsesAnnotation(
+                    methodSpec,
+                    SWAGGER_OK,
+                    SWAGGER_UNAUTHORIZED,
+                    SWAGGER_ACCESS_DENIED,
+                    SWAGGER_INTERNAL_SERVER_ERROR
             );
         }
 
@@ -175,26 +183,13 @@ public class SproutControllerProcessor {
                 );
 
         if (generateSwaggerDocs) {
-            methodSpec.addAnnotation(AnnotationSpec
-                    .builder(API_RESPONSES)
-                    .addMember(VALUE, "$L", """
-                            {
-                                @%s(responseCode = "200", description = "Successful retrieval of %s"),
-                                @%s(responseCode = "401", description = "Unauthorized"),
-                                @%s(responseCode = "403", description = "Access denied"),
-                                @%s(responseCode = "404", description = "%s not found"),
-                                @%s(responseCode = "500", description = "Internal server error")
-                            }
-                            """.formatted(
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    simpleName,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    simpleName,
-                                    SWAGGER_API_RESPONSE_ANNOTATION
-                            )
-                    ).build()
+            addSwaggerApiResponsesAnnotation(
+                    methodSpec,
+                    SWAGGER_OK,
+                    SWAGGER_UNAUTHORIZED,
+                    SWAGGER_ACCESS_DENIED,
+                    SWAGGER_NOT_FOUND,
+                    SWAGGER_INTERNAL_SERVER_ERROR
             );
         }
 
@@ -227,25 +222,13 @@ public class SproutControllerProcessor {
                 );
 
         if (generateSwaggerDocs) {
-            methodSpec.addAnnotation(AnnotationSpec
-                    .builder(API_RESPONSES)
-                    .addMember(VALUE, "$L", """
-                            {
-                                @%s(responseCode = "201", description = "Successful created %s"),
-                                @%s(responseCode = "400", description = "Invalid input data"),
-                                @%s(responseCode = "401", description = "Unauthorized"),
-                                @%s(responseCode = "403", description = "Access denied"),
-                                @%s(responseCode = "500", description = "Internal server error")
-                            }
-                            """.formatted(
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    simpleName,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    SWAGGER_API_RESPONSE_ANNOTATION
-                            )
-                    ).build()
+            addSwaggerApiResponsesAnnotation(
+                    methodSpec,
+                    SWAGGER_CREATED,
+                    SWAGGER_BAD_REQUEST,
+                    SWAGGER_UNAUTHORIZED,
+                    SWAGGER_ACCESS_DENIED,
+                    SWAGGER_INTERNAL_SERVER_ERROR
             );
         }
 
@@ -288,28 +271,14 @@ public class SproutControllerProcessor {
                 );
 
         if (generateSwaggerDocs) {
-            methodSpec.addAnnotation(AnnotationSpec
-                    .builder(API_RESPONSES)
-                    .addMember(VALUE, "$L", """
-                            {
-                                @%s(responseCode = "200", description = "Successful updated %s"),
-                                @%s(responseCode = "400", description = "Invalid input data"),
-                                @%s(responseCode = "401", description = "Unauthorized"),
-                                @%s(responseCode = "403", description = "Access denied"),
-                                @%s(responseCode = "404", description = "%s not found"),
-                                @%s(responseCode = "500", description = "Internal server error")
-                            }
-                            """.formatted(
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    simpleName,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    simpleName,
-                                    SWAGGER_API_RESPONSE_ANNOTATION
-                            )
-                    ).build()
+            addSwaggerApiResponsesAnnotation(
+                    methodSpec,
+                    SWAGGER_OK,
+                    SWAGGER_BAD_REQUEST,
+                    SWAGGER_UNAUTHORIZED,
+                    SWAGGER_ACCESS_DENIED,
+                    SWAGGER_NOT_FOUND,
+                    SWAGGER_INTERNAL_SERVER_ERROR
             );
         }
 
@@ -343,26 +312,13 @@ public class SproutControllerProcessor {
                 );
 
         if (generateSwaggerDocs) {
-            methodSpec.addAnnotation(AnnotationSpec
-                    .builder(API_RESPONSES)
-                    .addMember(VALUE, "$L", """
-                            {
-                                @%s(responseCode = "204", description = "Successful deleted %s"),
-                                @%s(responseCode = "401", description = "Unauthorized"),
-                                @%s(responseCode = "403", description = "Access denied"),
-                                @%s(responseCode = "404", description = "%s not found"),
-                                @%s(responseCode = "500", description = "Internal server error")
-                            }
-                            """.formatted(
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    simpleName,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    SWAGGER_API_RESPONSE_ANNOTATION,
-                                    simpleName,
-                                    SWAGGER_API_RESPONSE_ANNOTATION
-                            )
-                    ).build()
+            addSwaggerApiResponsesAnnotation(
+                    methodSpec,
+                    SWAGGER_NO_CONTENT,
+                    SWAGGER_UNAUTHORIZED,
+                    SWAGGER_ACCESS_DENIED,
+                    SWAGGER_NOT_FOUND,
+                    SWAGGER_INTERNAL_SERVER_ERROR
             );
         }
 
@@ -388,5 +344,25 @@ public class SproutControllerProcessor {
         } else {
             return simpleName;
         }
+    }
+
+    private static String generateSwaggerApiResponseString(int responseCode, String description) {
+        return "@%s(responseCode = \"%d\", description = \"%s\")".formatted(
+                SWAGGER_API_RESPONSE_ANNOTATION,
+                responseCode,
+                description
+        );
+
+    }
+
+    private static void addSwaggerApiResponsesAnnotation(
+            MethodSpec.Builder methodSpec,
+            String... apiResponses
+    ) {
+        var annotationSpec = AnnotationSpec.builder(API_RESPONSES);
+        Arrays.stream(apiResponses).forEach(apiResponse ->
+                annotationSpec.addMember(VALUE, "$L", apiResponse)
+        );
+        methodSpec.addAnnotation(annotationSpec.build());
     }
 }
