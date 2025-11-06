@@ -100,6 +100,7 @@ public class SproutControllerProcessor {
                     sproutResource.generateSwaggerDocs() && swaggerNeeded
             ));
         }
+
         if (methodGenerationAllowed(Endpoint.GET_BY_ID, sproutResource)) {
             typeSpec.addMethod(generateGetByIdMethod(
                     type,
@@ -347,10 +348,17 @@ public class SproutControllerProcessor {
     }
 
     private static boolean methodGenerationAllowed(Endpoint endpoint, SproutResource sproutResource) {
-        if (Arrays.asList(sproutResource.exclude()).contains(endpoint)) {
+        var excluded = Arrays.asList(sproutResource.exclude());
+        if (excluded.contains(endpoint)) {
             return false;
         }
         if (sproutResource.include().length == 0) {
+            return true;
+        }
+        if (sproutResource.readOnly() &&
+                (endpoint == Endpoint.GET_ALL && !excluded.contains(Endpoint.GET_ALL)
+                        || endpoint == Endpoint.GET_BY_ID && !excluded.contains(Endpoint.GET_BY_ID))
+        ) {
             return true;
         }
         return Arrays.asList(sproutResource.include()).contains(endpoint);
