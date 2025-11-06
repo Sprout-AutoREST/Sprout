@@ -30,9 +30,9 @@ public class SproutControllerProcessor {
     private static final String SWAGGER_OK =
             generateSwaggerApiResponseString(200, "Successful retrieval");
     private static final String SWAGGER_CREATED =
-            generateSwaggerApiResponseString(201, "Successful created");
+            generateSwaggerApiResponseString(201, "Successfully created");
     private static final String SWAGGER_NO_CONTENT =
-            generateSwaggerApiResponseString(204, "Successful deleted");
+            generateSwaggerApiResponseString(204, "Successfully deleted");
     private static final String SWAGGER_BAD_REQUEST =
             generateSwaggerApiResponseString(400, "Invalid input data");
     private static final String SWAGGER_UNAUTHORIZED =
