@@ -355,10 +355,7 @@ public class SproutControllerProcessor {
         if (sproutResource.include().length == 0) {
             return true;
         }
-        if (sproutResource.readOnly() &&
-                (endpoint == Endpoint.GET_ALL && !excluded.contains(Endpoint.GET_ALL)
-                        || endpoint == Endpoint.GET_BY_ID && !excluded.contains(Endpoint.GET_BY_ID))
-        ) {
+        if (sproutResource.readOnly() && (endpoint == Endpoint.GET_ALL || endpoint == Endpoint.GET_BY_ID)) {
             return true;
         }
         return Arrays.asList(sproutResource.include()).contains(endpoint);
