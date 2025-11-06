@@ -10,6 +10,7 @@ import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import de.flix29.sprout.annotations.SproutPolicy;
 import de.flix29.sprout.annotations.SproutResource;
+import de.flix29.sprout.annotations.model.Endpoint;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -80,18 +81,7 @@ public class SproutControllerProcessor {
                         .addParameter(operations, "operations")
                         .addStatement("this.operations = operations")
                         .build()
-                ).addMethod(generateGetAllMethod(
-                        type,
-                        simpleName,
-                        policy == null ? null : policy.read(),
-                        sproutResource.generateSwaggerDocs() && swaggerNeeded
-                )).addMethod(generateGetByIdMethod(
-                        type,
-                        simpleName,
-                        idType,
-                        policy == null ? null : policy.read(),
-                        sproutResource.generateSwaggerDocs() && swaggerNeeded
-                ));
+                );
 
         if (sproutResource.generateSwaggerDocs() && swaggerNeeded) {
             typeSpec.addAnnotation(AnnotationSpec
@@ -102,24 +92,50 @@ public class SproutControllerProcessor {
             );
         }
 
-        if (!sproutResource.readOnly()) {
-            typeSpec.addMethod(generatePostMethod(
+        if (methodGenerationAllowed(Endpoint.GET_ALL, sproutResource)) {
+            typeSpec.addMethod(generateGetAllMethod(
                     type,
                     simpleName,
-                    policy == null ? null : policy.create(),
-                    sproutResource.generateSwaggerDocs() && swaggerNeeded
-            )).addMethod(generatePutMethod(
-                    type,
-                    simpleName,
-                    idType,
-                    policy == null ? null : policy.update(),
-                    sproutResource.generateSwaggerDocs() && swaggerNeeded
-            )).addMethod(generateDeleteMethod(
-                    simpleName,
-                    idType,
-                    policy == null ? null : policy.delete(),
+                    policy == null ? null : policy.read(),
                     sproutResource.generateSwaggerDocs() && swaggerNeeded
             ));
+        }
+        if (methodGenerationAllowed(Endpoint.GET_BY_ID, sproutResource)) {
+            typeSpec.addMethod(generateGetByIdMethod(
+                    type,
+                    simpleName,
+                    idType,
+                    policy == null ? null : policy.read(),
+                    sproutResource.generateSwaggerDocs() && swaggerNeeded
+            ));
+        }
+
+        if (!sproutResource.readOnly()) {
+            if (methodGenerationAllowed(Endpoint.CREATE, sproutResource)) {
+                typeSpec.addMethod(generatePostMethod(
+                        type,
+                        simpleName,
+                        policy == null ? null : policy.create(),
+                        sproutResource.generateSwaggerDocs() && swaggerNeeded
+                ));
+            }
+            if (methodGenerationAllowed(Endpoint.UPDATE, sproutResource)) {
+                typeSpec.addMethod(generatePutMethod(
+                        type,
+                        simpleName,
+                        idType,
+                        policy == null ? null : policy.update(),
+                        sproutResource.generateSwaggerDocs() && swaggerNeeded
+                ));
+            }
+            if (methodGenerationAllowed(Endpoint.DELETE, sproutResource)) {
+                typeSpec.addMethod(generateDeleteMethod(
+                        simpleName,
+                        idType,
+                        policy == null ? null : policy.delete(),
+                        sproutResource.generateSwaggerDocs() && swaggerNeeded
+                ));
+            }
         }
 
         return typeSpec;
@@ -328,6 +344,16 @@ public class SproutControllerProcessor {
         }
 
         return methodSpec.build();
+    }
+
+    private static boolean methodGenerationAllowed(Endpoint endpoint, SproutResource sproutResource) {
+        if (Arrays.asList(sproutResource.exclude()).contains(endpoint)) {
+            return false;
+        }
+        if (sproutResource.include().length == 0) {
+            return true;
+        }
+        return Arrays.asList(sproutResource.include()).contains(endpoint);
     }
 
     private static AnnotationSpec generatePreAuthorizeAnnotation(String policy) {
