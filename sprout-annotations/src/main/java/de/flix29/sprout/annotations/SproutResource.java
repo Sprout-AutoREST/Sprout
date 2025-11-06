@@ -50,7 +50,7 @@ public @interface SproutResource {
     Endpoint[] include() default {};
 
     /**
-     * Endpoints to exclude for this resource. Bounds stronger than {@link SproutResource#include()} option.
+     * Endpoints to exclude for this resource. Binds stronger than the {@link SproutResource#include()} option.
      * @return the endpoints to exclude
      */
     Endpoint[] exclude() default {};
