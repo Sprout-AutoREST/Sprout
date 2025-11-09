@@ -56,6 +56,25 @@ To get started with Sprout, just follow these simple steps:
     </plugins>
 </build>
 ```
+
+### Example Entity
+```java
+import de.flix29.sprout.annotations.SproutRessource;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+
+@Entity
+@SproutRessource
+public class Book {
+    @Id
+    private Long id;
+    private String title;
+    private String author;
+
+    // Getters and Setters
+}
+```
+
 With this simple setup, you already got a RestController with five REST endpoints for each of your annotated entities:
 - `GET /api/{entity}` - Retrieve all entities
 - `GET /api/{entity}/{id}` - Retrieve a specific entity by ID
@@ -87,13 +106,21 @@ class CustomBookOperations extends SproutBookService {
     }
 }
 ```
+Because the controllers depend on the interface instead of the generated service class, Spring will automatically inject your custom bean wherever Sprout needs it.
 
 ## Optional Features
 Sprout also offers several optional features that you can enable by adding additional annotations to your entities:
 - `@SproutPolicy` Lets you define custom access policies for your each endpoint.
 - `@SproutId` Lets you define which field of your entity should be used as the ID field if you don't want to use the Database ID.
 
-Because the controllers depend on the interface instead of the generated service class, Spring will automatically inject your custom bean wherever Sprout needs it.
+The `@SproutRessource` annotation also provides several configuration options:
+- `path`: Customize the base path for the generated endpoints (default: `/api/{entity}`)
+- `generateSwaggerDocs`: Enable or disable Swagger documentation generation for the endpoints (default: true)
+- `name`: Customize the name of the resource used in the endpoint paths and swagger tag (default: entity class name in lowercase)
+- `tag` and `summary`: Customize the Swagger tag and summary for the generated endpoints.
+- `readonly`, `include` and `exclude`: Specify which CRUD operations to include or exclude from the generated endpoints.
+
+### Sprout Runtime Features
 
 If you add the sprout-runtime dependency to your project, you can also use the following features:
 
