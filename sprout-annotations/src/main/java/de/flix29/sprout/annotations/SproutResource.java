@@ -35,7 +35,7 @@ public @interface SproutResource {
     /**
      * If true, only read endpoints are generated for this resource. Note that this overrides the
      * {@link SproutResource#include()} and {@link SproutResource#exclude()} options.<br>
-     * e.g., if set to true, no create, update, or delete endpoints will be generated.
+     * E.g., if set to true, no create, update, or delete endpoints will be generated.
      * No matter what is set in include/exclude. You can still exclude read endpoints
      * using {@link SproutResource#exclude()}.
      * @return true if the resource is read-only
@@ -60,6 +60,14 @@ public @interface SproutResource {
      * @return true if Swagger docs should be generated
      */
     boolean generateSwaggerDocs() default true;
+
+    /**
+     * If true, the generated Repository will be annotated with
+     * {@link org.springframework.data.repository.NoRepositoryBean}. By default, the repository is annotated with
+     * {@link org.springframework.stereotype.Repository}.
+     * @return true if the repository should be overridable.
+     */
+    boolean overrideRepository() default false;
 
     /**
      * Optional tag for the resource. This will be used in the Swagger documentation if enabled.

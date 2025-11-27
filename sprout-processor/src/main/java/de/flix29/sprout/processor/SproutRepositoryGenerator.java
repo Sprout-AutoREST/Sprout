@@ -27,17 +27,29 @@ public class SproutRepositoryGenerator {
     }
 
     public static TypeSpec.Builder generateRepository(
-            TypeElement type, String simpleName, String entityName, String idName, TypeMirror idType
+            TypeElement type,
+            String simpleName,
+            String entityName,
+            String idName,
+            boolean overrideRepository,
+            TypeMirror idType
     ) {
-        return TypeSpec.interfaceBuilder("Sprout" + simpleName + "Repository")
+        var builder = TypeSpec.interfaceBuilder("Sprout" + simpleName + "Repository")
                 .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(ClassName.get("org.springframework.stereotype", "Repository"))
                 .addSuperinterface(ParameterizedTypeName.get(
                         ClassName.get(SPRING_DATA_JPA, "JpaRepository"),
                         ClassName.get(type),
                         TypeName.get(idType)
                 ))
                 .addMethod(generateDeleteByIdMethod(entityName, idName, TypeName.get(idType)));
+
+        if (overrideRepository) {
+            builder.addAnnotation(ClassName.get("org.springframework.data.repository", "NoRepositoryBean"));
+        } else {
+            builder.addAnnotation(ClassName.get("org.springframework.stereotype", "Repository"));
+        }
+
+        return builder;
     }
 
     private static MethodSpec generateDeleteByIdMethod(String entityName, String idName, TypeName idType) {

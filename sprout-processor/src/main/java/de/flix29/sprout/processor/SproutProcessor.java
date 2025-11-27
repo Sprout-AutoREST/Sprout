@@ -114,7 +114,8 @@ public class SproutProcessor extends AbstractProcessor {
                     Diagnostic.Kind.NOTE,
                     "[Sprout] Generating repository for " + simpleName
             );
-            var repository = SproutRepositoryGenerator.generateRepository(type, simpleName, entityName, idName, idType);
+            var repository = SproutRepositoryGenerator
+                    .generateRepository(type, simpleName, entityName, idName, annotation.overrideRepository(), idType);
 
             processingEnv.getMessager().printMessage(
                     Diagnostic.Kind.NOTE,
