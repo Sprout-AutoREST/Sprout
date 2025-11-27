@@ -119,6 +119,7 @@ The `@SproutRessource` annotation also provides several configuration options:
 - `name`: Customize the name of the resource used in the endpoint paths and swagger tag (default: entity class name in lowercase)
 - `tag` and `summary`: Customize the Swagger tag and summary for the generated endpoints.
 - `readonly`, `include` and `exclude`: Specify which CRUD operations to include or exclude from the generated endpoints.
+- `overrideRepository`: Adds `@NoRepositoryBean` to the generated Repository to make it extendable. If set to true, the repository needs to be extended by a custom Repository Bean.
 
 ### Sprout Runtime Features
 
