@@ -25,7 +25,7 @@ To get started with Sprout, just follow these simple steps:
 - SpringBoot 3.5.x or higher
 
 1. Add the Sprout-annotation dependency to your Maven project and the sprout-processor to the maven-compiler-plugin.
-2. Annotate your JPA entities with the `@SproutRessource` annotation.
+2. Annotate your JPA entities with the `@SproutResource` annotation.
 3. Run your SpringBoot application, and Sprout will automatically generate RESTful endpoints for your entities into your target folder.
 
 ### Maven
@@ -59,12 +59,12 @@ To get started with Sprout, just follow these simple steps:
 
 ### Example Entity
 ```java
-import de.flix29.sprout.annotations.SproutRessource;
+import de.flix29.sprout.annotations.SproutResource;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
 @Entity
-@SproutRessource
+@SproutResource
 public class Book {
     @Id
     private Long id;
@@ -113,7 +113,7 @@ Sprout also offers several optional features that you can enable by adding addit
 - `@SproutPolicy` Lets you define custom access policies for your each endpoint.
 - `@SproutId` Lets you define which field of your entity should be used as the ID field if you don't want to use the Database ID.
 
-The `@SproutRessource` annotation also provides several configuration options:
+The `@SproutResource` annotation also provides several configuration options:
 - `path`: Customize the base path for the generated endpoints (default: `/api/{entity}`)
 - `generateSwaggerDocs`: Enable or disable Swagger documentation generation for the endpoints (default: true)
 - `name`: Customize the name of the resource used in the endpoint paths and swagger tag (default: entity class name in lowercase)
@@ -137,7 +137,7 @@ If you add the sprout-runtime dependency to your project, you can also use the f
 Sprout provides a unified error handling mechanism that returns consistent error responses for all endpoints.
 This is enabled by default when you include the sprout-runtime dependency. It'll provide the following parameters which can be set via the application.properties file:
 - `sprout.errors.enabled` - Whether the error handling is enabled (default: true)
-- `sprout.error.log-log-stacktraces` - Whether to include stack traces in error responses (default: false)
+- `sprout.error.log-stacktraces` - Whether to include stack traces in error responses (default: false)
 - `sprout.errors.internal-code` - The error code to log for internal server errors (default: internal-error)
 
 ### Method-Level Security
