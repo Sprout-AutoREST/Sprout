@@ -16,13 +16,13 @@ public class SproutMarkerProcessor {
 
     protected static TypeSpec.Builder generateMarker(
             TypeMirror idType,
-            String className,
+            String simpleName,
             String apiPath,
             SproutPolicy policy,
             String entityName,
             String idName
     ) {
-        var builder = TypeSpec.classBuilder(className)
+        var builder = TypeSpec.classBuilder("Sprout" + simpleName + "Marker")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addField(FieldSpec
                         .builder(String.class, "PATH", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)

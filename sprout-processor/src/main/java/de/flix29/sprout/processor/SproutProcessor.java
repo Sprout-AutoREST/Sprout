@@ -82,7 +82,6 @@ public class SproutProcessor extends AbstractProcessor {
             boolean swaggerNeeded = checkIfSwaggerNeeded(annotation);
 
             String basePackage = baseGeneratedPackage(type);
-            String className = simpleName + "SproutMarker";
 
             Element idElement;
             try {
@@ -103,7 +102,7 @@ public class SproutProcessor extends AbstractProcessor {
             );
             var marker = SproutMarkerProcessor.generateMarker(
                     idType,
-                    className,
+                    simpleName,
                     apiPath,
                     policyAnnotation,
                     entityName,
