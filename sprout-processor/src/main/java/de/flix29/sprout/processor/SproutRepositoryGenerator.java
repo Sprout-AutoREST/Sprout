@@ -7,10 +7,13 @@ import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import de.flix29.sprout.annotations.SproutResource;
+import de.flix29.sprout.annotations.model.Endpoint;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
+import java.util.Arrays;
 
 public class SproutRepositoryGenerator {
 
@@ -32,6 +35,7 @@ public class SproutRepositoryGenerator {
             String entityName,
             String idName,
             boolean overrideRepository,
+            SproutResource sproutResource,
             TypeMirror idType
     ) {
         var builder = TypeSpec.interfaceBuilder("Sprout" + simpleName + "Repository")
@@ -40,8 +44,11 @@ public class SproutRepositoryGenerator {
                         ClassName.get(SPRING_DATA_JPA, "JpaRepository"),
                         ClassName.get(type),
                         TypeName.get(idType)
-                ))
-                .addMethod(generateDeleteByIdMethod(entityName, idName, TypeName.get(idType)));
+                ));
+
+        if (methodGenerationAllowed(Endpoint.DELETE, sproutResource)) {
+            builder.addMethod(generateDeleteByIdMethod(entityName, idName, TypeName.get(idType)));
+        }
 
         if (overrideRepository) {
             builder.addAnnotation(ClassName.get("org.springframework.data.repository", "NoRepositoryBean"));
@@ -74,5 +81,19 @@ public class SproutRepositoryGenerator {
                 )
                 .returns(TypeName.VOID)
                 .build();
+    }
+
+    private static boolean methodGenerationAllowed(Endpoint endpoint, SproutResource sproutResource) {
+        var excluded = Arrays.asList(sproutResource.exclude());
+        if (excluded.contains(endpoint)) {
+            return false;
+        }
+        if (sproutResource.include().length == 0) {
+            return true;
+        }
+        if (sproutResource.readOnly() && (endpoint == Endpoint.GET_ALL || endpoint == Endpoint.GET_BY_ID)) {
+            return true;
+        }
+        return Arrays.asList(sproutResource.include()).contains(endpoint);
     }
 }

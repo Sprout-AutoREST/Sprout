@@ -5,10 +5,13 @@ import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import de.flix29.sprout.annotations.SproutResource;
+import de.flix29.sprout.annotations.model.Endpoint;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
+import java.util.Arrays;
 
 class SproutOperationsGenerator {
 
@@ -22,7 +25,7 @@ class SproutOperationsGenerator {
     public static TypeSpec.Builder generateOperations(
             TypeElement type,
             String simpleName,
-            boolean readOnly,
+            SproutResource sproutResource,
             TypeMirror idType
     ) {
         ClassName entityType = ClassName.get(type);
@@ -31,15 +34,24 @@ class SproutOperationsGenerator {
         TypeSpec.Builder builder = TypeSpec.interfaceBuilder("Sprout" + simpleName + "Operations")
                 .addModifiers(Modifier.PUBLIC);
 
-        builder
-                .addMethod(createFindAllMethod(entityType))
-                .addMethod(createFindByIdMethod(entityType, idT));
+        if (methodGenerationAllowed(Endpoint.GET_ALL, sproutResource)) {
+            builder.addMethod(createFindAllMethod(entityType));
+        }
 
-        if (!readOnly) {
-            builder
-                    .addMethod(createSaveMethod(entityType))
-                    .addMethod(createUpdateMethod(entityType, idT))
-                    .addMethod(createDeleteMethod(idT));
+        if (methodGenerationAllowed(Endpoint.GET_BY_ID, sproutResource)) {
+            builder.addMethod(createFindByIdMethod(entityType, idT));
+        }
+
+        if (!sproutResource.readOnly()) {
+            if (methodGenerationAllowed(Endpoint.CREATE, sproutResource)) {
+                builder.addMethod(createSaveMethod(entityType));
+            }
+            if (methodGenerationAllowed(Endpoint.UPDATE, sproutResource)) {
+                builder.addMethod(createUpdateMethod(entityType, idT));
+            }
+            if (methodGenerationAllowed(Endpoint.DELETE, sproutResource)) {
+                builder.addMethod(createDeleteMethod(idT));
+            }
         }
 
         return builder;
@@ -83,5 +95,19 @@ class SproutOperationsGenerator {
                 .addParameter(idT, "id")
                 .returns(TypeName.BOOLEAN)
                 .build();
+    }
+
+    private static boolean methodGenerationAllowed(Endpoint endpoint, SproutResource sproutResource) {
+        var excluded = Arrays.asList(sproutResource.exclude());
+        if (excluded.contains(endpoint)) {
+            return false;
+        }
+        if (sproutResource.include().length == 0) {
+            return true;
+        }
+        if (sproutResource.readOnly() && (endpoint == Endpoint.GET_ALL || endpoint == Endpoint.GET_BY_ID)) {
+            return true;
+        }
+        return Arrays.asList(sproutResource.include()).contains(endpoint);
     }
 }

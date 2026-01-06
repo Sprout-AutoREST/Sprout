@@ -93,7 +93,7 @@ public class SproutProcessor extends AbstractProcessor {
             var idName = getIdNameFromElement(idElement);
 
             processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
-                    String .format("[Sprout] ID for %s -> '%s' with type %s", type.getSimpleName(), idName, idType)
+                    String.format("[Sprout] ID for %s -> '%s' with type %s", type.getSimpleName(), idName, idType)
             );
 
             processingEnv.getMessager().printMessage(
@@ -113,8 +113,15 @@ public class SproutProcessor extends AbstractProcessor {
                     Diagnostic.Kind.NOTE,
                     "[Sprout] Generating repository for " + simpleName
             );
-            var repository = SproutRepositoryGenerator
-                    .generateRepository(type, simpleName, entityName, idName, annotation.overrideRepository(), idType);
+            var repository = SproutRepositoryGenerator.generateRepository(
+                    type,
+                    simpleName,
+                    entityName,
+                    idName,
+                    annotation.overrideRepository(),
+                    annotation,
+                    idType
+            );
 
             processingEnv.getMessager().printMessage(
                     Diagnostic.Kind.NOTE,
@@ -123,7 +130,7 @@ public class SproutProcessor extends AbstractProcessor {
                     )
             );
             var operations = SproutOperationsGenerator
-                    .generateOperations(type, simpleName, annotation.readOnly(), idType);
+                    .generateOperations(type, simpleName, annotation, idType);
 
             processingEnv.getMessager().printMessage(
                     Diagnostic.Kind.NOTE,
@@ -132,7 +139,7 @@ public class SproutProcessor extends AbstractProcessor {
                     )
             );
             var service = SproutServiceGenerator
-                    .generateService(type, simpleName, basePackage, annotation.readOnly(), idType);
+                    .generateService(type, simpleName, basePackage, annotation, idType);
 
             processingEnv.getMessager().printMessage(
                     Diagnostic.Kind.NOTE,

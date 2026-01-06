@@ -7,10 +7,13 @@ import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import de.flix29.sprout.annotations.SproutResource;
+import de.flix29.sprout.annotations.model.Endpoint;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
+import java.util.Arrays;
 
 public class SproutServiceGenerator {
 
@@ -27,7 +30,7 @@ public class SproutServiceGenerator {
     }
 
     protected static TypeSpec.Builder generateService(
-            TypeElement type, String simpleName, String basePath, boolean readOnly, TypeMirror idType
+            TypeElement type, String simpleName, String basePath, SproutResource sproutResource, TypeMirror idType
     ) {
         final String componentName = "Sprout" + simpleName;
         final ClassName repository = ClassName.get(basePath + ".repositories", componentName + "Repository");
@@ -47,22 +50,35 @@ public class SproutServiceGenerator {
                         .addParameter(repository, "repository")
                         .addStatement("this.repository = repository")
                         .build()
-                )
-                .addMethod(generateFindAllMethod(entityType))
-                .addMethod(generateFindByIdMethod(entityType, idT));
+                );
 
-        if (!readOnly) {
-            builder
-                    .addMethod(generateSaveMethod(entityType))
-                    .addMethod(generateUpdateMethod(entityType, idT))
-                    .addMethod(generateDeleteMethod(idT));
-        }
-        if (readOnly) {
+        if (sproutResource.readOnly()) {
             builder.addAnnotation(AnnotationSpec.builder(TRANSACTIONAL)
                     .addMember("readOnly", "$L", true)
                     .build()
             );
         }
+
+        if (methodGenerationAllowed(Endpoint.GET_ALL, sproutResource)) {
+            builder.addMethod(generateFindAllMethod(entityType));
+        }
+
+        if (methodGenerationAllowed(Endpoint.GET_BY_ID, sproutResource)) {
+            builder.addMethod(generateFindByIdMethod(entityType, idT));
+        }
+
+        if (!sproutResource.readOnly()) {
+            if (methodGenerationAllowed(Endpoint.CREATE, sproutResource)) {
+                builder.addMethod(generateSaveMethod(entityType));
+            }
+            if (methodGenerationAllowed(Endpoint.UPDATE, sproutResource)) {
+                builder.addMethod(generateUpdateMethod(entityType, idT));
+            }
+            if (methodGenerationAllowed(Endpoint.DELETE, sproutResource)) {
+                builder.addMethod(generateDeleteMethod(idT));
+            }
+        }
+
         return builder;
     }
 
@@ -124,5 +140,19 @@ public class SproutServiceGenerator {
                 .addStatement("repository.deleteById(id)")
                 .addStatement("return true")
                 .build();
+    }
+
+    private static boolean methodGenerationAllowed(Endpoint endpoint, SproutResource sproutResource) {
+        var excluded = Arrays.asList(sproutResource.exclude());
+        if (excluded.contains(endpoint)) {
+            return false;
+        }
+        if (sproutResource.include().length == 0) {
+            return true;
+        }
+        if (sproutResource.readOnly() && (endpoint == Endpoint.GET_ALL || endpoint == Endpoint.GET_BY_ID)) {
+            return true;
+        }
+        return Arrays.asList(sproutResource.include()).contains(endpoint);
     }
 }
