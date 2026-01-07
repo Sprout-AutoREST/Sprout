@@ -7,6 +7,8 @@ import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.TypeSpec;
 import de.flix29.sprout.annotations.SproutPolicy;
 import de.flix29.sprout.annotations.SproutResource;
+import org.springframework.expression.ParseException;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Processor;
@@ -74,6 +76,9 @@ public class SproutProcessor extends AbstractProcessor {
             if (entityName == null || entityName.isBlank()) {
                 entityName = simpleName;
             }
+
+            sanitizePolicyStrings(policyAnnotation, entityName);
+
             String derivedPath = "/api/" + simpleName.toLowerCase() + "s";
             String apiPath =
                     (annotation.path() != null && !annotation.path().isBlank()) ? annotation.path() : derivedPath;
@@ -164,6 +169,36 @@ public class SproutProcessor extends AbstractProcessor {
             writeFiles(markerFile, repositoryFile, operationsFile, serviceFile, controllerFile);
         }
         return true;
+    }
+
+    private void sanitizePolicyStrings(SproutPolicy policyAnnotation, String entityName) {
+        if (policyAnnotation == null) {
+            return;
+        }
+
+        var spelExpressionParser = new SpelExpressionParser();
+        var policies = List.of(
+                policyAnnotation.read(),
+                policyAnnotation.create(),
+                policyAnnotation.update(),
+                policyAnnotation.delete()
+        );
+        processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
+                "[Sprout] Checking SpEL syntax for " + entityName + "."
+        );
+
+        policies.stream()
+                .filter(policy -> !policy.isBlank())
+                .forEach(policy -> {
+                    try {
+                        spelExpressionParser.parseExpression(policy);
+                    } catch (ParseException ex) {
+                        processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                                "[Sprout] Invalid SpEL syntax in @SproutPolicy for " + entityName +
+                                        ". Please use the correct format."
+                        );
+                    }
+                });
     }
 
     private String baseGeneratedPackage(TypeElement type) {

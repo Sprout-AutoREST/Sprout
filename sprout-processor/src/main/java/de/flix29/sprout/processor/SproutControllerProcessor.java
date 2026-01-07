@@ -364,7 +364,7 @@ public class SproutControllerProcessor {
     private static AnnotationSpec generatePreAuthorizeAnnotation(String policy) {
         return AnnotationSpec
                 .builder(ClassName.get("org.springframework.security.access.prepost", "PreAuthorize"))
-                .addMember(VALUE, "$S", policy)
+                .addMember(VALUE, "$S", policy.trim())
                 .build();
     }
 
