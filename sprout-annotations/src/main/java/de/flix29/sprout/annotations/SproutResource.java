@@ -56,6 +56,13 @@ public @interface SproutResource {
     Endpoint[] exclude() default {};
 
     /**
+     * If true, the authentication principal is passed to service methods. <br>
+     * See: sprout runtime for method security configuration.
+     * @return true if authentication principal should be passed
+     */
+    boolean authenticationPrincipal() default false;
+
+    /**
      * If true, Swagger documentation is generated for this resource.
      * @return true if Swagger docs should be generated
      */

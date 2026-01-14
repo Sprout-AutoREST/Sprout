@@ -24,6 +24,8 @@ public class SproutControllerProcessor {
 
     private static final ClassName PATH_VARIABLE_CLASS = ClassName.get(SPRING_WEB_ANNOTATION_PACKAGE, "PathVariable");
     private static final ClassName RESPONSE_ENTITY_CLASS = ClassName.get("org.springframework.http", "ResponseEntity");
+    private static final ClassName AUTHENTICATION =
+            ClassName.get("org.springframework.security.core", "Authentication");
     private static final ClassName LIST_CLASS = ClassName.get("java.util", "List");
     private static final ClassName API_RESPONSES =
             ClassName.get("io.swagger.v3.oas.annotations.responses", "ApiResponses");
@@ -48,6 +50,7 @@ public class SproutControllerProcessor {
     private static final String APPLICATION_JSON = "application/json";
     private static final String ID = "/{id}";
     private static final String VALUE = "value";
+    private static final String AUTHENTICATION_PARAM = "authentication";
 
     private SproutControllerProcessor() {
         // Utility class
@@ -97,7 +100,8 @@ public class SproutControllerProcessor {
                     type,
                     simpleName,
                     policy == null ? null : policy.read(),
-                    sproutResource.generateSwaggerDocs() && swaggerNeeded
+                    sproutResource.generateSwaggerDocs() && swaggerNeeded,
+                    sproutResource.authenticationPrincipal()
             ));
         }
 
@@ -107,7 +111,8 @@ public class SproutControllerProcessor {
                     simpleName,
                     idType,
                     policy == null ? null : policy.read(),
-                    sproutResource.generateSwaggerDocs() && swaggerNeeded
+                    sproutResource.generateSwaggerDocs() && swaggerNeeded,
+                    sproutResource.authenticationPrincipal()
             ));
         }
 
@@ -117,7 +122,8 @@ public class SproutControllerProcessor {
                         type,
                         simpleName,
                         policy == null ? null : policy.create(),
-                        sproutResource.generateSwaggerDocs() && swaggerNeeded
+                        sproutResource.generateSwaggerDocs() && swaggerNeeded,
+                        sproutResource.authenticationPrincipal()
                 ));
             }
             if (methodGenerationAllowed(Endpoint.UPDATE, sproutResource)) {
@@ -126,7 +132,8 @@ public class SproutControllerProcessor {
                         simpleName,
                         idType,
                         policy == null ? null : policy.update(),
-                        sproutResource.generateSwaggerDocs() && swaggerNeeded
+                        sproutResource.generateSwaggerDocs() && swaggerNeeded,
+                        sproutResource.authenticationPrincipal()
                 ));
             }
             if (methodGenerationAllowed(Endpoint.DELETE, sproutResource)) {
@@ -134,7 +141,8 @@ public class SproutControllerProcessor {
                         simpleName,
                         idType,
                         policy == null ? null : policy.delete(),
-                        sproutResource.generateSwaggerDocs() && swaggerNeeded
+                        sproutResource.generateSwaggerDocs() && swaggerNeeded,
+                        sproutResource.authenticationPrincipal()
                 ));
             }
         }
@@ -143,8 +151,14 @@ public class SproutControllerProcessor {
     }
 
     private static MethodSpec generateGetAllMethod(
-            TypeElement type, String simpleName, String policy, boolean generateSwaggerDocs
+            TypeElement type, String simpleName, String policy, boolean generateSwaggerDocs, boolean authentication
     ) {
+        var statement = "return $T.ok(operations.findAll())";
+        if (authentication) {
+            statement = "return $T.ok(operations.findAll(authentication))";
+        }
+
+
         var methodSpec = MethodSpec.methodBuilder("getAll")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
@@ -157,7 +171,7 @@ public class SproutControllerProcessor {
                                 ClassName.get(type)
                         )
                 )).addJavadoc("Returns all $L items.\n", simpleName)
-                .addStatement("return $T.ok(operations.findAll())", RESPONSE_ENTITY_CLASS);
+                .addStatement(statement, RESPONSE_ENTITY_CLASS);
 
         if (generateSwaggerDocs) {
             addSwaggerApiResponsesAnnotation(
@@ -169,6 +183,10 @@ public class SproutControllerProcessor {
             );
         }
 
+        if (authentication) {
+            methodSpec.addParameter(AUTHENTICATION, AUTHENTICATION_PARAM);
+        }
+
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
         }
@@ -177,8 +195,26 @@ public class SproutControllerProcessor {
     }
 
     private static MethodSpec generateGetByIdMethod(
-            TypeElement type, String simpleName, TypeMirror idType, String policy, boolean generateSwaggerDocs
+            TypeElement type,
+            String simpleName,
+            TypeMirror idType,
+            String policy,
+            boolean generateSwaggerDocs,
+            boolean authentication
     ) {
+        var statement = """
+                return operations.findById(id)
+                        .map($T::ok)
+                        .orElse($T.notFound().build())
+                """;
+        if (authentication) {
+            statement = """
+                    return operations.findById(id, authentication)
+                            .map($T::ok)
+                            .orElse($T.notFound().build())
+                    """;
+        }
+
         var methodSpec = MethodSpec.methodBuilder("getById")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
@@ -192,11 +228,7 @@ public class SproutControllerProcessor {
                         RESPONSE_ENTITY_CLASS,
                         ClassName.get(type)
                 )).addJavadoc("Returns a single $L item by its ID.\n", simpleName)
-                .addStatement("""
-                                return operations.findById(id)
-                                        .map($T::ok)
-                                        .orElse($T.notFound().build())
-                                """,
+                .addStatement(statement,
                         RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
                 );
 
@@ -211,6 +243,10 @@ public class SproutControllerProcessor {
             );
         }
 
+        if (authentication) {
+            methodSpec.addParameter(AUTHENTICATION, AUTHENTICATION_PARAM);
+        }
+
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
         }
@@ -219,8 +255,13 @@ public class SproutControllerProcessor {
     }
 
     private static MethodSpec generatePostMethod(
-            TypeElement type, String simpleName, String policy, boolean generateSwaggerDocs
+            TypeElement type, String simpleName, String policy, boolean generateSwaggerDocs, boolean authentication
     ) {
+        var statement = "return $T.status($T.CREATED).body(operations.save(new$L))";
+        if (authentication) {
+            statement = "return $T.status($T.CREATED).body(operations.save(new$L, authentication))";
+        }
+
         var methodSpec = MethodSpec.methodBuilder("create")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
@@ -235,7 +276,7 @@ public class SproutControllerProcessor {
                         RESPONSE_ENTITY_CLASS,
                         ClassName.get(type)
                 )).addJavadoc("Creates a new $L item.\n", simpleName)
-                .addStatement("return $T.status($T.CREATED).body(operations.save(new$L))",
+                .addStatement(statement,
                         RESPONSE_ENTITY_CLASS, ClassName.get("org.springframework.http", "HttpStatus"), simpleName
                 );
 
@@ -250,6 +291,10 @@ public class SproutControllerProcessor {
             );
         }
 
+        if (authentication) {
+            methodSpec.addParameter(AUTHENTICATION, AUTHENTICATION_PARAM);
+        }
+
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
         }
@@ -258,8 +303,26 @@ public class SproutControllerProcessor {
     }
 
     private static MethodSpec generatePutMethod(
-            TypeElement type, String simpleName, TypeMirror idType, String policy, boolean generateSwaggerDocs
+            TypeElement type,
+            String simpleName,
+            TypeMirror idType,
+            String policy,
+            boolean generateSwaggerDocs,
+            boolean authentication
     ) {
+        var statement = """
+                return operations.update(id, updated$L)
+                    .map($T::ok)
+                    .orElse($T.notFound().build())
+                """;
+        if (authentication) {
+            statement = """
+                    return operations.update(id, updated$L, authentication)
+                        .map($T::ok)
+                        .orElse($T.notFound().build())
+                    """;
+        }
+
         var methodSpec = MethodSpec.methodBuilder("update")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
@@ -280,13 +343,7 @@ public class SproutControllerProcessor {
                         RESPONSE_ENTITY_CLASS,
                         ClassName.get(type)
                 )).addJavadoc("Updates an existing $L item by its ID.\n", simpleName)
-                .addStatement("""
-                                return operations.update(id, updated$L)
-                                    .map($T::ok)
-                                    .orElse($T.notFound().build())
-                                """,
-                        simpleName, RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
-                );
+                .addStatement(statement, simpleName, RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS);
 
         if (generateSwaggerDocs) {
             addSwaggerApiResponsesAnnotation(
@@ -300,6 +357,10 @@ public class SproutControllerProcessor {
             );
         }
 
+        if (authentication) {
+            methodSpec.addParameter(AUTHENTICATION, AUTHENTICATION_PARAM);
+        }
+
         if (policy != null && !policy.isBlank()) {
             methodSpec.addAnnotation(generatePreAuthorizeAnnotation(policy));
         }
@@ -308,8 +369,13 @@ public class SproutControllerProcessor {
     }
 
     private static MethodSpec generateDeleteMethod(
-            String simpleName, TypeMirror idType, String policy, boolean generateSwaggerDocs
+            String simpleName, TypeMirror idType, String policy, boolean generateSwaggerDocs, boolean authentication
     ) {
+        var statement = "return operations.deleteById(id) ? $T.noContent().build() : $T.notFound().build()";
+        if (authentication) {
+            statement = "return operations.deleteById(id, authentication) " +
+                    "? $T.noContent().build() : $T.notFound().build()";
+        }
         var methodSpec = MethodSpec.methodBuilder("deleteById")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(AnnotationSpec
@@ -325,9 +391,7 @@ public class SproutControllerProcessor {
                         RESPONSE_ENTITY_CLASS,
                         TypeName.VOID.box()
                 )).addJavadoc("Deletes an existing $L item by its ID.\n", simpleName)
-                .addStatement("return operations.deleteById(id) ? $T.noContent().build() : $T.notFound().build()",
-                        RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS
-                );
+                .addStatement(statement, RESPONSE_ENTITY_CLASS, RESPONSE_ENTITY_CLASS);
 
         if (generateSwaggerDocs) {
             addSwaggerApiResponsesAnnotation(
@@ -338,6 +402,10 @@ public class SproutControllerProcessor {
                     SWAGGER_NOT_FOUND,
                     SWAGGER_INTERNAL_SERVER_ERROR
             );
+        }
+
+        if (authentication) {
+            methodSpec.addParameter(AUTHENTICATION, AUTHENTICATION_PARAM);
         }
 
         if (policy != null && !policy.isBlank()) {

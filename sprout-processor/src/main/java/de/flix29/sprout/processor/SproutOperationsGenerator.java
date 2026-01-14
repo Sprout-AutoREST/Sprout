@@ -17,6 +17,9 @@ class SproutOperationsGenerator {
 
     private static final ClassName LIST = ClassName.get("java.util", "List");
     private static final ClassName OPTIONAL = ClassName.get("java.util", "Optional");
+    private static final ClassName AUTHENTICATION =
+            ClassName.get("org.springframework.security.core", "Authentication");
+    private static final String AUTHENTICATION_PARAM = "authentication";
 
     private SproutOperationsGenerator() {
         // Utility class
@@ -35,66 +38,91 @@ class SproutOperationsGenerator {
                 .addModifiers(Modifier.PUBLIC);
 
         if (methodGenerationAllowed(Endpoint.GET_ALL, sproutResource)) {
-            builder.addMethod(createFindAllMethod(entityType));
+            builder.addMethod(createFindAllMethod(entityType, sproutResource.authenticationPrincipal()));
         }
 
         if (methodGenerationAllowed(Endpoint.GET_BY_ID, sproutResource)) {
-            builder.addMethod(createFindByIdMethod(entityType, idT));
+            builder.addMethod(createFindByIdMethod(entityType, idT, sproutResource.authenticationPrincipal()));
         }
 
         if (!sproutResource.readOnly()) {
             if (methodGenerationAllowed(Endpoint.CREATE, sproutResource)) {
-                builder.addMethod(createSaveMethod(entityType));
+                builder.addMethod(createSaveMethod(entityType, sproutResource.authenticationPrincipal()));
             }
             if (methodGenerationAllowed(Endpoint.UPDATE, sproutResource)) {
-                builder.addMethod(createUpdateMethod(entityType, idT));
+                builder.addMethod(createUpdateMethod(entityType, idT, sproutResource.authenticationPrincipal()));
             }
             if (methodGenerationAllowed(Endpoint.DELETE, sproutResource)) {
-                builder.addMethod(createDeleteMethod(idT));
+                builder.addMethod(createDeleteMethod(idT, sproutResource.authenticationPrincipal()));
             }
         }
 
         return builder;
     }
 
-    private static MethodSpec createFindAllMethod(ClassName entityType) {
-        return MethodSpec.methodBuilder("findAll")
+    private static MethodSpec createFindAllMethod(ClassName entityType, boolean authentication) {
+        var builder = MethodSpec.methodBuilder("findAll")
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                .returns(ParameterizedTypeName.get(LIST, entityType))
-                .build();
+                .returns(ParameterizedTypeName.get(LIST, entityType));
+
+        if (authentication) {
+            builder.addParameter(AUTHENTICATION, AUTHENTICATION_PARAM);
+        }
+
+        return builder.build();
     }
 
-    private static MethodSpec createFindByIdMethod(ClassName entityType, TypeName idT) {
-        return MethodSpec.methodBuilder("findById")
+    private static MethodSpec createFindByIdMethod(ClassName entityType, TypeName idT, boolean authentication) {
+        var builder = MethodSpec.methodBuilder("findById")
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .addParameter(idT, "id")
-                .returns(ParameterizedTypeName.get(OPTIONAL, entityType))
-                .build();
+                .returns(ParameterizedTypeName.get(OPTIONAL, entityType));
+
+        if (authentication) {
+            builder.addParameter(AUTHENTICATION, AUTHENTICATION_PARAM);
+        }
+
+        return builder.build();
     }
 
-    private static MethodSpec createSaveMethod(ClassName entityType) {
-        return MethodSpec.methodBuilder("save")
+    private static MethodSpec createSaveMethod(ClassName entityType, boolean authentication) {
+        var builder = MethodSpec.methodBuilder("save")
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .addParameter(entityType, "entity")
-                .returns(entityType)
-                .build();
+                .returns(entityType);
+
+        if (authentication) {
+            builder.addParameter(AUTHENTICATION, AUTHENTICATION_PARAM);
+        }
+
+        return builder.build();
     }
 
-    private static MethodSpec createUpdateMethod(ClassName entityType, TypeName idT) {
-        return MethodSpec.methodBuilder("update")
+    private static MethodSpec createUpdateMethod(ClassName entityType, TypeName idT, boolean authentication) {
+        var builder = MethodSpec.methodBuilder("update")
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .addParameter(idT, "id")
                 .addParameter(entityType, "entity")
-                .returns(ParameterizedTypeName.get(OPTIONAL, entityType))
-                .build();
+                .returns(ParameterizedTypeName.get(OPTIONAL, entityType));
+
+        if (authentication) {
+            builder.addParameter(AUTHENTICATION, AUTHENTICATION_PARAM);
+        }
+
+        return builder.build();
     }
 
-    private static MethodSpec createDeleteMethod(TypeName idT) {
-        return MethodSpec.methodBuilder("deleteById")
+    private static MethodSpec createDeleteMethod(TypeName idT, boolean authentication) {
+        var builder = MethodSpec.methodBuilder("deleteById")
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .addParameter(idT, "id")
-                .returns(TypeName.BOOLEAN)
-                .build();
+                .returns(TypeName.BOOLEAN);
+
+        if (authentication) {
+            builder.addParameter(AUTHENTICATION, AUTHENTICATION_PARAM);
+        }
+
+        return builder.build();
     }
 
     private static boolean methodGenerationAllowed(Endpoint endpoint, SproutResource sproutResource) {
