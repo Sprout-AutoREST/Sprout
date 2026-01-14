@@ -120,6 +120,7 @@ The `@SproutResource` annotation also provides several configuration options:
 - `tag` and `summary`: Customize the Swagger tag and summary for the generated endpoints.
 - `readonly`, `include` and `exclude`: Specify which CRUD operations to include or exclude from the generated endpoints.
 - `overrideRepository`: Adds `@NoRepositoryBean` to the generated Repository to make it extendable. If set to true, the repository needs to be extended by a custom Repository Bean.
+- `authenticationPrincipal`: Specifies whether to include the `Authentication` parameter in the generated controller methods (default: false).
 
 ### Sprout Runtime Features
 
